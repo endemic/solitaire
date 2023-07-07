@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solitaire</title>
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
+    body { text-align: center; }
+
+    #game {
+      margin: auto;
+      background-color: #0a5;
+      max-width: 100%;
+      max-height: 100%;
+      /* TODO: this doesn't seem to work on an actual phone */
+      aspect-ratio: 4 / 3;
+    }
+  </style>
+
+  <script>
+    const randomPositiveNegative = () => {
+      if (Math.random() > 0.5) {
+        return 1;
+      }
+
+      return -1;
+    };
+
+    const fallingCardDemo = e => {
+      // do stuff here
+      const canvas = document.getElementById('game');
+      const context = canvas.getContext('2d');
+
+      // canvas.style.width = '100%';
+
+      const stacks = [];
+      const padding = 10;
+
+      let interval;
+
+      // starting positions
+      for (let i = 0; i < 4; i += 1) {
+        stacks.push({
+          x: img.width * i + padding * (i + 1),
+          y: padding
+        });
+      }
+
+      stacks.forEach(position => {
+        // NOTE: (x, y) is the top left corner of the card
+        context.drawImage(img, position.x, position.y);
+      });
+
+      let randomStack = stacks[Math.floor(Math.random() * stacks.length)];
+
+      let movingCard = {
+        x: randomStack.x,
+        y: randomStack.y
+      };
+
+      const randomVelocity = () => {
+        // TODO: probably need to tweak these values
+        const velocity = {
+          x: (Math.random() * 4 + 3) * randomPositiveNegative(),
+          y: -Math.random() * 4 + 3
+        };
+
+        console.log(`initial velocity: ${velocity.x}, ${velocity.y}`);
+
+        return velocity;
+      };
+
+      let velocity = randomVelocity();
+      // simulate "gravity"
+      let acceleration = {
+        x: 0,
+        y: 0.75 // positive, because y increases as you go down
+      };
+
+      // this function re-initializes the moving card
+      const setupCard = () => {
+        randomStack = stacks[Math.floor(Math.random() * stacks.length)];
+        movingCard = {
+          x: randomStack.x,
+          y: randomStack.y
+        };
+        velocity = randomVelocity();
+      };
+
+      const animate = e => {
+        // draw card
+        context.drawImage(img, movingCard.x, movingCard.y);
+
+        // determine next position
+        let next = {
+          x: movingCard.x + velocity.x,
+          y: movingCard.y + velocity.y
+        };
+
+        // don't let the card go below the bottom edge of the screen
+        if (next.y + img.height > canvas.height) {
+          next.y = canvas.height - img.height;
+
+          // "bounce" the card
+          velocity.y = -velocity.y * 0.8;
+        }
+
+        // update card position
+        movingCard.x = next.x;
+        movingCard.y = next.y;
+
+        // update card velocity w/ "gravity" acceleration
+        velocity.y += acceleration.y;
+
+        // start a new card if the existing one goes off screen
+        if (movingCard.x + img.width < 0 || movingCard.x > canvas.width) {
+          setupCard();
+        }
+      };
+
+      interval = window.setInterval(animate, 16);
+    };
+
+    const img = new Image();
+    img.addEventListener('load', fallingCardDemo);
+    img.src = 'images/card.png';
+  </script>
+</head>
+<body>
+  <canvas id="game" width="800" height="600"></canvas>
+</body>
+</html>
