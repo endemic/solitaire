@@ -23,6 +23,7 @@
       max-height: 100%;
       /* TODO: this doesn't seem to work on an actual phone */
       aspect-ratio: 4 / 3;
+      cursor: grab;
     }
   </style>
   <script>
@@ -67,7 +68,7 @@
         });
       }
 
-      // draw piles
+      // reference the various places where a card can be played
       for (let i = 0; i < 7; i += 1) {
         stacks.push({
           x: cardWidth * i + (margin * (i + 1)),
@@ -75,33 +76,107 @@
         });
       }
 
-      const drawBackground = () => {
+      const update = () => {
+        context.clearRect(0, 0, width, height);
+
+        // draw stack backgrounds
         stacks.forEach(stack => {
+          // `target` is the pile background image
           context.drawImage(target, stack.x, stack.y);
+        });
+
+        // draw card
+        context.drawImage(cardImg, card.x, card.y);
+      };
+
+      // track position of the singular card we can move around
+      // eventually we'd store references to all the on-screen cards
+      let card = { x: stacks[0].x, y: stacks[0].y };
+
+      // bool whether a card has been picked up or not
+      let grabbed = null;
+
+      // record the cursor offset where the card was picked up,
+      // so clicking the card doesn't cause it to "jump" to the cursor
+      let grabOffset = {x: 0, y: 0};
+
+      // initial draw
+      update();
+
+      // rudimentary bounding box intersection
+      const touchedStack = ({x, y}) => {
+        return stacks.findIndex(stack => {
+          return x > stack.x &&
+            x < stack.x + cardWidth &&
+            y > stack.y &&
+            y < stack.y + cardHeight;
         });
       };
 
-      drawBackground();
+      const touchedCard = ({x, y}) => {
+        return x > card.x &&
+            x < card.x + cardWidth &&
+            y > card.y &&
+            y < card.y + cardHeight;
+      };
 
       canvas.addEventListener('mousedown', e => {
         // check to see if the event intersected the drawn card
-        console.log(e);
+        // console.log(e);
 
         // this seems to translate to <canvas> coordinates
         let x = e.x - e.target.offsetLeft;
         let y = e.y - e.target.offsetTop;
 
+        // console.log(`${x}, ${y}`);
+        // console.log(`touched stack ${touchedStack({x, y})}`);
 
-        console.log(`${x}, ${y}`);
-      })
+        if (touchedCard({x, y})) {
+          console.log('grab the card');
+          canvas.style.cursor = 'grabbing';
+          grabbed = card;
+          grabOffset = {
+            x: x - card.x,
+            y: y - card.y
+          };
+        }
+      });
+
+      canvas.addEventListener('mousemove', e => {
+        if (!grabbed) {
+          return;
+        }
+
+        // this seems to translate to <canvas> coordinates
+        let x = e.x - e.target.offsetLeft;
+        let y = e.y - e.target.offsetTop;
+
+        card = {x: x - grabOffset.x, y: y - grabOffset.y};
+
+        update();
+      });
+
+      canvas.addEventListener('mouseup', e => {
+        grabbed = null;
+        canvas.style.cursor = 'grab';
+
+        // TODO: check if current position of card overlaps any of the drop zones
+        // if so, tween to that location
+        // otherwise, tween the card back to its original position
+
+        // TEMP: just return card back to the "draw" pile
+        card = { x: stacks[0].x, y: stacks[0].y }
+
+        update();
+      });
     };
 
     const target = new Image();
     target.src = 'images/target.png';
 
-    const img = new Image();
-    img.addEventListener('load', dragDemo);
-    img.src = 'images/card.png';
+    const cardImg = new Image();
+    cardImg.addEventListener('load', dragDemo);
+    cardImg.src = 'images/card.png';
   </script>
 </head>
 <body>
