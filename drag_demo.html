@@ -88,14 +88,14 @@
     ];
 
     const IMAGES = {};
-    let loadedImages = 0;
+    let loadedImageCount = 0;
 
     const onImageLoad = e => {
       // TODO: display a progress bar or something
-      loadedImages += 1;
+      loadedImageCount += 1;
 
       // this means we've got all our images in memory
-      if (loadedImages === IMG_SRC.length) {
+      if (loadedImageCount === IMG_SRC.length) {
         // TODO: initialize the canvas before this, so a "loading" progress bar can be
         // displayed (or "Loading..." text)
         dragDemo();
@@ -103,7 +103,7 @@
     }
 
     IMG_SRC.forEach(src => {
-      // probably a better way to do this
+      // key is in format `suite_rank` -- probably a better way to do this
       let key = src.match(/(?<=images\/)\w+\/\w+/)[0].replace('/','_');
 
       IMAGES[key] = new Image();
@@ -120,11 +120,23 @@
       suite = null;
       rank = null;
 
+      // TODO: figure out a way to link stacked cards together
+      parent = null;
+
       constructor(rank, suite) {
         this.rank = rank;
         this.suite = suite;
 
-        // TODO: pull backImg/frontImg from the list of loaded images
+        this.backImg = IMAGES['backs_one'];
+        this.frontImg = IMAGES[`${this.suite}_${this.rank}`];
+      }
+
+      image() {
+        if (this.faceUp) {
+          return this.frontImg;
+        }
+
+        return this.backImg;
       }
     }
 
@@ -187,12 +199,14 @@
         });
 
         // draw card
-        context.drawImage(cardImg, card.x, card.y);
+        context.drawImage(card.image(), card.x, card.y);
       };
 
       // track position of the singular card we can move around
       // eventually we'd store references to all the on-screen cards
-      let card = { x: stacks[0].x, y: stacks[0].y };
+      let card = new Card('four', 'hearts');
+      card.x = stacks[0].x;
+      card.y = stacks[0].y;
 
       // bool whether a card has been picked up or not
       let grabbed = null;
@@ -214,6 +228,7 @@
         });
       };
 
+      // TODO: hardcoded for a single card
       const touchedCard = ({x, y}) => {
         return x > card.x &&
             x < card.x + cardWidth &&
@@ -266,7 +281,8 @@
         let {x, y} = getCoords(e);
 
         // move the card along with the touch/cursor
-        card = {x: x - grabOffset.x, y: y - grabOffset.y};
+        grabbed.x = x - grabOffset.x;
+        grabbed.y = y - grabOffset.y;
 
         update();
       };
@@ -278,7 +294,6 @@
           return;
         }
 
-        grabbed = null;
         canvas.style.cursor = 'grab';
 
         let {x, y} = getCoords(e);
@@ -287,15 +302,17 @@
         // if so, lock to that location
         const stackIndex = touchedStack({x, y});
         if (stackIndex !== -1) {
-          card = {
-            x: stacks[stackIndex].x,
-            y: stacks[stackIndex].y
-          };
+          grabbed.x = stacks[stackIndex].x;
+          grabbed.y = stacks[stackIndex].y;
         } else {
           // otherwise, move the card back to its original position
           // TEMP: just return card back to the "draw" pile
-          card = { x: stacks[0].x, y: stacks[0].y }
+          grabbed.x = stacks[0].x;
+          grabbed.y = stacks[0].y;
         }
+
+        // "release" reference to card
+        grabbed = null;
 
         update();
       };
