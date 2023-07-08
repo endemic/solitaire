@@ -27,6 +27,107 @@
     }
   </style>
   <script>
+    const IMG_SRC = [
+      'images/backs/one.png',
+
+      // 'images/hearts/ace.png',
+      // 'images/hearts/two.png',
+      // 'images/hearts/three.png',
+      'images/hearts/four.png',
+      // 'images/hearts/five.png',
+      // 'images/hearts/six.png',
+      // 'images/hearts/seven.png',
+      // 'images/hearts/eight.png',
+      // 'images/hearts/nine.png',
+      // 'images/hearts/ten.png',
+      // 'images/hearts/jack.png',
+      // 'images/hearts/queen.png',
+      // 'images/hearts/king.png',
+
+      // 'images/diamonds/ace.png',
+      // 'images/diamonds/two.png',
+      // 'images/diamonds/three.png',
+      // 'images/diamonds/four.png',
+      // 'images/diamonds/five.png',
+      // 'images/diamonds/six.png',
+      // 'images/diamonds/seven.png',
+      // 'images/diamonds/eight.png',
+      // 'images/diamonds/nine.png',
+      // 'images/diamonds/ten.png',
+      // 'images/diamonds/jack.png',
+      // 'images/diamonds/queen.png',
+      // 'images/diamonds/king.png',
+
+      // 'images/spades/ace.png',
+      // 'images/spades/two.png',
+      // 'images/spades/three.png',
+      // 'images/spades/four.png',
+      // 'images/spades/five.png',
+      // 'images/spades/six.png',
+      // 'images/spades/seven.png',
+      // 'images/spades/eight.png',
+      // 'images/spades/nine.png',
+      // 'images/spades/ten.png',
+      // 'images/spades/jack.png',
+      // 'images/spades/queen.png',
+      // 'images/spades/king.png',
+
+      // 'images/clubs/ace.png',
+      // 'images/clubs/two.png',
+      // 'images/clubs/three.png',
+      // 'images/clubs/four.png',
+      // 'images/clubs/five.png',
+      // 'images/clubs/six.png',
+      // 'images/clubs/seven.png',
+      // 'images/clubs/eight.png',
+      // 'images/clubs/nine.png',
+      // 'images/clubs/ten.png',
+      // 'images/clubs/jack.png',
+      // 'images/clubs/queen.png',
+      // 'images/clubs/king.png',
+    ];
+
+    const IMAGES = {};
+    let loadedImages = 0;
+
+    const onImageLoad = e => {
+      // TODO: display a progress bar or something
+      loadedImages += 1;
+
+      // this means we've got all our images in memory
+      if (loadedImages === IMG_SRC.length) {
+        // TODO: initialize the canvas before this, so a "loading" progress bar can be
+        // displayed (or "Loading..." text)
+        dragDemo();
+      }
+    }
+
+    IMG_SRC.forEach(src => {
+      // probably a better way to do this
+      let key = src.match(/(?<=images\/)\w+\/\w+/)[0].replace('/','_');
+
+      IMAGES[key] = new Image();
+      IMAGES[key].src = src;
+      IMAGES[key].addEventListener('load', onImageLoad);
+    });
+
+    class Card {
+      faceUp = false;
+      x = 0;
+      y = 0;
+      backImg = null;
+      frontImg = null;
+      suite = null;
+      rank = null;
+
+      constructor(rank, suite) {
+        this.rank = rank;
+        this.suite = suite;
+
+        // TODO: pull backImg/frontImg from the list of loaded images
+      }
+    }
+
     const dragDemo = e => {
       // do stuff here
       const canvas = document.getElementById('game');
