@@ -120,19 +120,32 @@
             y < card.y + cardHeight;
       };
 
-      canvas.addEventListener('mousedown', e => {
-        // check to see if the event intersected the drawn card
-        // console.log(e);
+      const getCoords = event => {
+        // need to scale the touches by the actual size of the canvas;
+        // e.g. the canvas still thinks it is 605px wide even if it is
+        // scaled to 400px by CSS rules
+        const scale = event.target.width / event.target.clientWidth;
+
+        if (event.changedTouches && event.changedTouches.length > 0) {
+          return {
+            x: event.changedTouches[0].clientX * scale,
+            y: event.changedTouches[0].clientY * scale
+          };
+        }
 
         // this seems to translate to <canvas> coordinates
-        let x = e.x - e.target.offsetLeft;
-        let y = e.y - e.target.offsetTop;
+        return {
+          x: event.x - event.target.offsetLeft,
+          y: event.y - event.target.offsetTop
+        }
+      };
 
-        // console.log(`${x}, ${y}`);
-        // console.log(`touched stack ${touchedStack({x, y})}`);
+      const onDown = e => {
+        e.preventDefault();
+
+        let {x, y} = getCoords(e);
 
         if (touchedCard({x, y})) {
-          console.log('grab the card');
           canvas.style.cursor = 'grabbing';
           grabbed = card;
           grabOffset = {
@@ -140,35 +153,59 @@
             y: y - card.y
           };
         }
-      });
+      };
 
-      canvas.addEventListener('mousemove', e => {
+      const onMove = e => {
+        e.preventDefault();
+
         if (!grabbed) {
           return;
         }
 
-        // this seems to translate to <canvas> coordinates
-        let x = e.x - e.target.offsetLeft;
-        let y = e.y - e.target.offsetTop;
+        let {x, y} = getCoords(e);
 
+        // move the card along with the touch/cursor
         card = {x: x - grabOffset.x, y: y - grabOffset.y};
 
         update();
-      });
+      };
 
-      canvas.addEventListener('mouseup', e => {
+      const onUp = e => {
+        e.preventDefault();
+
+        if (!grabbed) {
+          return;
+        }
+
         grabbed = null;
         canvas.style.cursor = 'grab';
 
-        // TODO: check if current position of card overlaps any of the drop zones
-        // if so, tween to that location
-        // otherwise, tween the card back to its original position
+        let {x, y} = getCoords(e);
 
-        // TEMP: just return card back to the "draw" pile
-        card = { x: stacks[0].x, y: stacks[0].y }
+        // TODO: check if current position of card overlaps any of the drop zones
+        // if so, lock to that location
+        const stackIndex = touchedStack({x, y});
+        if (stackIndex !== -1) {
+          card = {
+            x: stacks[stackIndex].x,
+            y: stacks[stackIndex].y
+          };
+        } else {
+          // otherwise, move the card back to its original position
+          // TEMP: just return card back to the "draw" pile
+          card = { x: stacks[0].x, y: stacks[0].y }
+        }
 
         update();
-      });
+      };
+
+      canvas.addEventListener('mousedown', onDown);
+      canvas.addEventListener('mousemove', onMove);
+      canvas.addEventListener('mouseup', onUp);
+
+      canvas.addEventListener('touchstart', onDown);
+      canvas.addEventListener('touchmove', onMove);
+      canvas.addEventListener('touchend', onUp);
     };
 
     const target = new Image();
