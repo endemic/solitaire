@@ -26,7 +26,13 @@
       cursor: grab;
     }
   </style>
+
+  <script src="scripts/shuffle.js"></script>
+
   <script>
+    const SUITES = ['hearts', 'diamonds', 'spades', 'clubs'];
+    const RANKS = ['ace', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'jack', 'queen', 'king'];
+
     const IMG_SRC = [
       'images/backs/one.png',
 
@@ -189,6 +195,24 @@
         });
       }
 
+      // initialize deck
+      const DECK = [];
+
+      // TODO: can we re-use the list of images for this?
+      SUITES.forEach(suite => {
+        RANKS.forEach(rank => {
+          let card = new Card(rank, suite);
+
+          // put all cards face down on the draw pile
+          card.x = stacks[0].x;
+          card.y = stacks[0].y;
+
+          DECK.push(card);
+        });
+      });
+
+      DECK.shuffle();
+
       const update = () => {
         context.clearRect(0, 0, width, height);
 
@@ -198,15 +222,17 @@
           context.drawImage(target, stack.x, stack.y);
         });
 
-        // draw card
-        context.drawImage(card.image(), card.x, card.y);
+        // draw cards on canvas
+        DECK.forEach(card => {
+          context.drawImage(card.image(), card.x, card.y);
+        });
       };
 
       // track position of the singular card we can move around
       // eventually we'd store references to all the on-screen cards
-      let card = new Card('four', 'hearts');
-      card.x = stacks[0].x;
-      card.y = stacks[0].y;
+      // let card = new Card('four', 'hearts');
+      // card.x = stacks[0].x;
+      // card.y = stacks[0].y;
 
       // bool whether a card has been picked up or not
       let grabbed = null;
@@ -230,6 +256,7 @@
 
       // TODO: hardcoded for a single card
       const touchedCard = ({x, y}) => {
+        return false;
         return x > card.x &&
             x < card.x + cardWidth &&
             y > card.y &&
@@ -290,13 +317,24 @@
       const onUp = e => {
         e.preventDefault();
 
+        let {x, y} = getCoords(e);
+
+        // if touched the draw pile
+        if (touchedStack({x, y}) === 0) {
+          // flip the topmost card over
+          let card = DECK.shift();
+          card.faceUp = true;
+
+          update();
+
+          return;
+        }
+
         if (!grabbed) {
           return;
         }
 
         canvas.style.cursor = 'grab';
-
-        let {x, y} = getCoords(e);
 
         // TODO: check if current position of card overlaps any of the drop zones
         // if so, lock to that location
@@ -328,10 +366,6 @@
 
     const target = new Image();
     target.src = 'images/target.png';
-
-    const cardImg = new Image();
-    cardImg.addEventListener('load', dragDemo);
-    cardImg.src = 'images/card.png';
   </script>
 </head>
 <body>

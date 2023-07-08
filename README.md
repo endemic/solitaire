@@ -18,5 +18,7 @@ HTML/CSS(?)/JS implementation of Solitaire. Using the classic Windows version as
 
 ## TODO
 
-- [ ] Create a card dragging demo -- set up the game board with seven action piles and four play piles; simulate dragging a card between these areas and having it "snap" in place
-- [ ] get the proportions right, and see how playable it is on a smaller phone in portrait mode
+- [x] Create a card dragging demo -- set up the game board with seven action piles and four play piles; simulate dragging a card between these areas and having it "snap" in place
+- [x] get the proportions right, and see how playable it is on a smaller phone in portrait mode
+  * can possibly make the cards a bit larger (currently 75x100)
+- [ ] placeholder images for card fronts
