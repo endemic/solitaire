@@ -128,6 +128,7 @@
 
       // TODO: figure out a way to link stacked cards together
       parent = null;
+      child = null;
 
       constructor(rank, suite) {
         this.rank = rank;
@@ -137,7 +138,7 @@
         this.frontImg = IMAGES[`${this.suite}_${this.rank}`];
       }
 
-      image() {
+      get image() {
         if (this.faceUp) {
           return this.frontImg;
         }
@@ -170,62 +171,86 @@
       const height = 454;
       const cardWidth = 75;
       const cardHeight = 100;
-
-      const stacks = [];
-
-      // draw pile
-      stacks.push({
+      
+      // initialize all places where a card can be placed - https://en.wikipedia.org/wiki/Glossary_of_patience_terms
+      
+      // "talon" (draw pile)
+      // placed in the upper left hand corner
+      let talon = {
         x: margin,
-        y: margin
-      });
-
-      // play piles
+        y: margin,
+        cards: []
+      };
+      
+      // "waste" (play stack)
+      // placed relative to the talon
+      let waste = {
+        x: talon.x + cardWidth + margin,
+        y: talon.y,
+        cards: []
+      };
+      
+      // 4 "foundations"
+      // aligned vertically with talon/waste, on right side of tableau
+      let foundations = [];
       for (let i = 0; i < 4; i += 1) {
-        stacks.push({
+        foundations.push({
           x: width - (cardWidth * (i + 1)) - (margin * (i + 1)),
-          y: margin
+          y: margin,
+          cards: []
         });
       }
 
-      // reference the various places where a card can be played
+      // 7 "piles"
+      // spans the width of the tableau, under the talon/waste/foundations
+      let piles = [];
       for (let i = 0; i < 7; i += 1) {
-        stacks.push({
+        piles.push({
           x: cardWidth * i + (margin * (i + 1)),
-          y: cardHeight + margin * 2
+          y: cardHeight + margin * 2,
+          cards: []
         });
       }
 
       // initialize deck
-      const DECK = [];
-
-      // TODO: can we re-use the list of images for this?
+      // TODO: can we re-use the list of images for this? maybe not as it includes images for card backs
       SUITES.forEach(suite => {
         RANKS.forEach(rank => {
           let card = new Card(rank, suite);
 
-          // put all cards face down on the draw pile
-          card.x = stacks[0].x;
-          card.y = stacks[0].y;
+          // put all cards face down in the talon
+          card.x = talon.x;
+          card.y = talon.y;
 
-          DECK.push(card);
+          talon.cards.push(card);
         });
       });
 
-      DECK.shuffle();
+      talon.cards.shuffle();
 
       const update = () => {
         context.clearRect(0, 0, width, height);
 
-        // draw stack backgrounds
-        stacks.forEach(stack => {
-          // `target` is the pile background image
-          context.drawImage(target, stack.x, stack.y);
+        // draw "target" backgrounds
+        // TODO: extract these `drawImage` calls to specialized "drawWhatever" functions
+        // which only draw the necessary cards (e.g. once a card is placed in a pile, it's no longer
+        // necessary to draw the target; e.g. only draw the top card in the talon)
+        context.drawImage(target, talon.x, talon.y);
+
+        context.drawImage(target, waste.x, waste.y);
+        
+        foundations.forEach(position => {
+          context.drawImage(target, position.x, position.y);
         });
 
-        // draw cards on canvas
-        DECK.forEach(card => {
-          context.drawImage(card.image(), card.x, card.y);
+        piles.forEach(position => {
+          context.drawImage(target, position.x, position.y);
         });
+
+        // TODO: draw cards
+        // DECK.forEach(card => {
+        //   context.drawImage(card.image, card.x, card.y);
+        // });
       };
 
       // track position of the singular card we can move around
@@ -245,6 +270,8 @@
       update();
 
       // rudimentary bounding box intersection
+      // TODO: make this a check to see if two cards overlap, and the percentage of overlap
+      // e.g. if the card is overlapping two drop points, choose the one with the greater overlap
       const touchedStack = ({x, y}) => {
         return stacks.findIndex(stack => {
           return x > stack.x &&
@@ -255,12 +282,12 @@
       };
 
       // TODO: hardcoded for a single card
-      const touchedCard = ({x, y}) => {
+      const touchedCard = (point, card) => {
         return false;
-        return x > card.x &&
-            x < card.x + cardWidth &&
-            y > card.y &&
-            y < card.y + cardHeight;
+        return point.x > card.x &&
+            point.x < card.x + cardWidth &&
+            point.y > card.y &&
+            point.y < card.y + cardHeight;
       };
 
       const getCoords = event => {
