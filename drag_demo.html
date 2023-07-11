@@ -51,21 +51,21 @@
       // 'images/hearts/king.png',
 
       // 'images/diamonds/ace.png',
-      // 'images/diamonds/two.png',
-      // 'images/diamonds/three.png',
+      'images/diamonds/two.png',
+      'images/diamonds/three.png',
       // 'images/diamonds/four.png',
       // 'images/diamonds/five.png',
       // 'images/diamonds/six.png',
       // 'images/diamonds/seven.png',
       // 'images/diamonds/eight.png',
       // 'images/diamonds/nine.png',
-      // 'images/diamonds/ten.png',
+      'images/diamonds/ten.png',
       // 'images/diamonds/jack.png',
       // 'images/diamonds/queen.png',
       // 'images/diamonds/king.png',
 
       // 'images/spades/ace.png',
-      // 'images/spades/two.png',
+      'images/spades/two.png',
       // 'images/spades/three.png',
       // 'images/spades/four.png',
       // 'images/spades/five.png',
@@ -79,10 +79,10 @@
       // 'images/spades/king.png',
 
       // 'images/clubs/ace.png',
-      // 'images/clubs/two.png',
+      'images/clubs/two.png',
       // 'images/clubs/three.png',
       // 'images/clubs/four.png',
-      // 'images/clubs/five.png',
+      'images/clubs/five.png',
       // 'images/clubs/six.png',
       // 'images/clubs/seven.png',
       // 'images/clubs/eight.png',
@@ -171,9 +171,9 @@
       const height = 454;
       const cardWidth = 75;
       const cardHeight = 100;
-      
+
       // initialize all places where a card can be placed - https://en.wikipedia.org/wiki/Glossary_of_patience_terms
-      
+
       // "talon" (draw pile)
       // placed in the upper left hand corner
       let talon = {
@@ -181,7 +181,7 @@
         y: margin,
         cards: []
       };
-      
+
       // "waste" (play stack)
       // placed relative to the talon
       let waste = {
@@ -189,7 +189,7 @@
         y: talon.y,
         cards: []
       };
-      
+
       // 4 "foundations"
       // aligned vertically with talon/waste, on right side of tableau
       let foundations = [];
@@ -213,17 +213,32 @@
       }
 
       // initialize deck
-      // TODO: can we re-use the list of images for this? maybe not as it includes images for card backs
-      SUITES.forEach(suite => {
-        RANKS.forEach(rank => {
-          let card = new Card(rank, suite);
+      // SUITES.forEach(suite => {
+      //   RANKS.forEach(rank => {
+      //     let card = new Card(rank, suite);
 
-          // put all cards face down in the talon
-          card.x = talon.x;
-          card.y = talon.y;
+      //     // put all cards face down in the talon
+      //     card.x = talon.x;
+      //     card.y = talon.y;
 
-          talon.cards.push(card);
-        });
+      //     talon.cards.push(card);
+      //   });
+      // });
+
+      // TODO: until card front images are complete
+      [
+        ['two', 'clubs'],
+        ['five', 'clubs'],
+        ['ten', 'diamonds'],
+        ['three', 'diamonds'],
+        ['two', 'diamonds'],
+        ['two', 'spades'],
+        ['four', 'hearts']
+      ].forEach(pair => {
+        let tmp = new Card(pair[0], pair[1]);
+        tmp.x = talon.x;
+        tmp.y = talon.y;
+        talon.cards.push(tmp);
       });
 
       talon.cards.shuffle();
@@ -235,22 +250,59 @@
         // TODO: extract these `drawImage` calls to specialized "drawWhatever" functions
         // which only draw the necessary cards (e.g. once a card is placed in a pile, it's no longer
         // necessary to draw the target; e.g. only draw the top card in the talon)
-        context.drawImage(target, talon.x, talon.y);
+        drawTalon();
 
-        context.drawImage(target, waste.x, waste.y);
-        
-        foundations.forEach(position => {
-          context.drawImage(target, position.x, position.y);
+        drawWaste();
+
+        foundations.forEach(f => drawFoundation(f));
+
+        piles.forEach(pile => {
+          context.drawImage(target, pile.x, pile.y);
         });
 
-        piles.forEach(position => {
-          context.drawImage(target, position.x, position.y);
-        });
+        drawGrabbed();
+      };
 
-        // TODO: draw cards
-        // DECK.forEach(card => {
-        //   context.drawImage(card.image, card.x, card.y);
-        // });
+      const drawTalon = () => {
+        if (talon.cards.length === 0) {
+          context.drawImage(target, talon.x, talon.y);
+
+          return;
+        }
+
+        // technically we don't have to draw the "last" card here
+        context.drawImage(talon.cards[talon.cards.length - 1].image, talon.x, talon.y);
+      };
+
+      const drawWaste = () => {
+        if (waste.cards.length === 0) {
+          context.drawImage(target, waste.x, waste.y);
+
+          return;
+        }
+
+        // only need to draw the first card
+        // TODO: with three card draw, we'll have to draw 3 cards offset
+        context.drawImage(waste.cards[0].image, waste.x, waste.y);
+      };
+
+      const drawFoundation = f => {
+        if (f.cards.length === 0) {
+          context.drawImage(target, f.x, f.y);
+
+          return;
+        }
+
+        // only draw the top-most card
+        context.drawImage(f.cards[f.cards.length - 1].image, f.x, f.y);
+      }
+
+      const drawGrabbed = () => {
+        if (!grabbed) {
+          return;
+        }
+
+        context.drawImage(grabbed.image, grabbed.x, grabbed.y);
       };
 
       // track position of the singular card we can move around
@@ -281,9 +333,8 @@
         });
       };
 
-      // TODO: hardcoded for a single card
+      //
       const touchedCard = (point, card) => {
-        return false;
         return point.x > card.x &&
             point.x < card.x + cardWidth &&
             point.y > card.y &&
@@ -313,16 +364,41 @@
       const onDown = e => {
         e.preventDefault();
 
-        let {x, y} = getCoords(e);
+        let point = getCoords(e);
 
-        if (touchedCard({x, y})) {
+        // if player clicks the talon
+        if (touchedCard(point, talon)) {
+          // and there are still cards left
+          if (talon.cards.length > 0) {
+            // flip one over onto the waste pile
+            let card = talon.cards.pop();
+            card.faceUp = true;
+            card.x = waste.x;
+            card.y = waste.y;
+            waste.cards.unshift(card);
+          } else {
+            // otherwise, move the waste back onto the talon
+            talon.cards = waste.cards.map(c => {
+              c.faceUp = false;
+              return c;
+            }).reverse();
+            waste.cards = [];
+          }
+        }
+
+        // if player clicks the waste pile
+        // "grab" the top-most card
+        if (touchedCard(point, waste)) {
           canvas.style.cursor = 'grabbing';
-          grabbed = card;
+
+          grabbed = waste.cards.shift();
           grabOffset = {
-            x: x - card.x,
-            y: y - card.y
+            x: point.x - grabbed.x,
+            y: point.y - grabbed.y
           };
         }
+
+        update();
       };
 
       const onMove = e => {
@@ -344,18 +420,7 @@
       const onUp = e => {
         e.preventDefault();
 
-        let {x, y} = getCoords(e);
-
-        // if touched the draw pile
-        if (touchedStack({x, y}) === 0) {
-          // flip the topmost card over
-          let card = DECK.shift();
-          card.faceUp = true;
-
-          update();
-
-          return;
-        }
+        let point = getCoords(e);
 
         if (!grabbed) {
           return;
@@ -365,15 +430,15 @@
 
         // TODO: check if current position of card overlaps any of the drop zones
         // if so, lock to that location
-        const stackIndex = touchedStack({x, y});
-        if (stackIndex !== -1) {
-          grabbed.x = stacks[stackIndex].x;
-          grabbed.y = stacks[stackIndex].y;
+        if (touchedCard(point, foundations[0])) {
+          grabbed.x = foundations[0].x;
+          grabbed.y = foundations[0].y;
+          foundations[0].cards.push(grabbed);
         } else {
-          // otherwise, move the card back to its original position
-          // TEMP: just return card back to the "draw" pile
-          grabbed.x = stacks[0].x;
-          grabbed.y = stacks[0].y;
+          // put the card back on the waste pile
+          grabbed.x = waste.x;
+          grabbed.y = waste.y;
+          waste.cards.unshift(grabbed);
         }
 
         // "release" reference to card
