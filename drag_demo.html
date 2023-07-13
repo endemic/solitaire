@@ -244,21 +244,16 @@
       talon.cards.shuffle();
 
       const update = () => {
+        // clear previous contents
         context.clearRect(0, 0, width, height);
 
-        // draw "target" backgrounds
-        // TODO: extract these `drawImage` calls to specialized "drawWhatever" functions
-        // which only draw the necessary cards (e.g. once a card is placed in a pile, it's no longer
-        // necessary to draw the target; e.g. only draw the top card in the talon)
         drawTalon();
 
         drawWaste();
 
         foundations.forEach(f => drawFoundation(f));
 
-        piles.forEach(pile => {
-          context.drawImage(target, pile.x, pile.y);
-        });
+        piles.forEach(p => drawPile(p));
 
         drawGrabbed();
       };
@@ -295,7 +290,20 @@
 
         // only draw the top-most card
         context.drawImage(f.cards[f.cards.length - 1].image, f.x, f.y);
-      }
+      };
+
+      const drawPile = p => {
+        if (p.cards.length === 0) {
+          context.drawImage(target, p.x, p.y);
+
+          return;
+        }
+
+        // only draw the top-most card
+        // TODO: need to draw these stacks in an offset way, such that
+        // we can see each card in the stack
+        context.drawImage(f.cards[f.cards.length - 1].image, f.x, f.y);
+      };
 
       const drawGrabbed = () => {
         if (!grabbed) {
@@ -397,6 +405,14 @@
             y: point.y - grabbed.y
           };
         }
+
+        // TODO: allow player to pick cards back up off the foundations
+        // "parent" card for the first card in the foundation pile will
+        // probably be the foundation itself?
+
+        // TODO: allow player to pick up cards from piles
+        // check collision detection against visible card fragments, as well
+        // as the entire card on top of the pile
 
         update();
       };
