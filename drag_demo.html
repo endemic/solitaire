@@ -27,7 +27,8 @@
     }
   </style>
 
-  <script src="scripts/shuffle.js"></script>
+<script src="scripts/shuffle.js"></script>
+<script src="scripts/card.js"></script>
 
   <script>
     const SUITES = ['hearts', 'diamonds', 'spades', 'clubs'];
@@ -35,6 +36,7 @@
 
     const IMG_SRC = [
       'images/backs/one.png',
+      'images/backs/target.png',
 
       // 'images/hearts/ace.png',
       // 'images/hearts/two.png',
@@ -108,6 +110,7 @@
       }
     }
 
+    // enumerate over image sources, and load them into memory
     IMG_SRC.forEach(src => {
       // key is in format `suite_rank` -- probably a better way to do this
       let key = src.match(/(?<=images\/)\w+\/\w+/)[0].replace('/','_');
@@ -117,38 +120,9 @@
       IMAGES[key].addEventListener('load', onImageLoad);
     });
 
-    class Card {
-      faceUp = false;
-      x = 0;
-      y = 0;
-      backImg = null;
-      frontImg = null;
-      suite = null;
-      rank = null;
 
-      // TODO: figure out a way to link stacked cards together
-      parent = null;
-      child = null;
-
-      constructor(rank, suite) {
-        this.rank = rank;
-        this.suite = suite;
-
-        this.backImg = IMAGES['backs_one'];
-        this.frontImg = IMAGES[`${this.suite}_${this.rank}`];
-      }
-
-      get image() {
-        if (this.faceUp) {
-          return this.frontImg;
-        }
-
-        return this.backImg;
-      }
-    }
 
     const dragDemo = e => {
-      // do stuff here
       const canvas = document.getElementById('game');
       const context = canvas.getContext('2d');
 
@@ -215,7 +189,7 @@
       // initialize deck
       // SUITES.forEach(suite => {
       //   RANKS.forEach(rank => {
-      //     let card = new Card(rank, suite);
+      //     let card = new Card(rank, suite, IMAGES);
 
       //     // put all cards face down in the talon
       //     card.x = talon.x;
@@ -235,7 +209,7 @@
         ['two', 'spades'],
         ['four', 'hearts']
       ].forEach(pair => {
-        let tmp = new Card(pair[0], pair[1]);
+        let tmp = new Card(pair[0], pair[1], IMAGES);
         tmp.x = talon.x;
         tmp.y = talon.y;
         talon.cards.push(tmp);
@@ -260,18 +234,18 @@
 
       const drawTalon = () => {
         if (talon.cards.length === 0) {
-          context.drawImage(target, talon.x, talon.y);
+          context.drawImage(IMAGES['backs_target'], talon.x, talon.y);
 
           return;
         }
 
-        // technically we don't have to draw the "last" card here
+        // we only need to draw the "top-most" card (which is the last in the array)
         context.drawImage(talon.cards[talon.cards.length - 1].image, talon.x, talon.y);
       };
 
       const drawWaste = () => {
         if (waste.cards.length === 0) {
-          context.drawImage(target, waste.x, waste.y);
+          context.drawImage(IMAGES['backs_target'], waste.x, waste.y);
 
           return;
         }
@@ -283,7 +257,7 @@
 
       const drawFoundation = f => {
         if (f.cards.length === 0) {
-          context.drawImage(target, f.x, f.y);
+          context.drawImage(IMAGES['backs_target'], f.x, f.y);
 
           return;
         }
@@ -294,15 +268,17 @@
 
       const drawPile = p => {
         if (p.cards.length === 0) {
-          context.drawImage(target, p.x, p.y);
+          context.drawImage(IMAGES['backs_target'], p.x, p.y);
 
           return;
         }
 
         // only draw the top-most card
         // TODO: need to draw these stacks in an offset way, such that
-        // we can see each card in the stack
-        context.drawImage(f.cards[f.cards.length - 1].image, f.x, f.y);
+        // we can see each card in the stack;
+        // implementation idea: set the card positions on each draw call
+        // that way I don't have to set those values when the card is dropped
+        context.drawImage(p.cards[p.cards.length - 1].image, p.x, p.y);
       };
 
       const drawGrabbed = () => {
@@ -312,12 +288,6 @@
 
         context.drawImage(grabbed.image, grabbed.x, grabbed.y);
       };
-
-      // track position of the singular card we can move around
-      // eventually we'd store references to all the on-screen cards
-      // let card = new Card('four', 'hearts');
-      // card.x = stacks[0].x;
-      // card.y = stacks[0].y;
 
       // bool whether a card has been picked up or not
       let grabbed = null;
@@ -438,20 +408,62 @@
 
         let point = getCoords(e);
 
+        // if not holding a card, then there's nothing to do
         if (!grabbed) {
           return;
         }
 
         canvas.style.cursor = 'grab';
 
-        // TODO: check if current position of card overlaps any of the drop zones
-        // if so, lock to that location
-        if (touchedCard(point, foundations[0])) {
-          grabbed.x = foundations[0].x;
-          grabbed.y = foundations[0].y;
-          foundations[0].cards.push(grabbed);
-        } else {
-          // put the card back on the waste pile
+        // check if current position of card overlaps
+        // any playable area; if so, move to that location
+
+        let valid = false;
+
+        // check foundations
+        foundations.forEach(f => {
+          if (touchedCard(point, f)) {
+            valid = true;
+
+            f.cards.push(grabbed);
+
+            // this sets the parent/child of the card stack
+            // not sure it is necessary to have both the card array of the stack
+            // as well as the "linked list"
+            if (f.cards.length === 0) {
+              grabbed.parent = f;
+            } else {
+              let newParent = f.cards[f.cards.length - 1];
+              newParent.child = grabbed;
+              grabbed.parent = newParent;
+            }
+          }
+        });
+
+        // check piles
+        piles.forEach(p => {
+          if (touchedCard(point, p)) {
+            valid = true;
+
+            p.cards.push(grabbed);
+
+            // this sets the parent/child of the card stack
+            // not sure it is necessary to have both the card array of the stack
+            // as well as the "linked list"
+            if (p.cards.length === 0) {
+              grabbed.parent = p;
+            } else {
+              let newParent = p.cards[p.cards.length - 1];
+              newParent.child = grabbed;
+              grabbed.parent = newParent;
+            }
+          }
+        });
+
+        // if no valid play was made
+        if (!valid) {
+          // put the card back where it was
+          // TODO: how to store the previous location?
           grabbed.x = waste.x;
           grabbed.y = waste.y;
           waste.cards.unshift(grabbed);
@@ -471,9 +483,6 @@
       canvas.addEventListener('touchmove', onMove);
       canvas.addEventListener('touchend', onUp);
     };
-
-    const target = new Image();
-    target.src = 'images/target.png';
   </script>
 </head>
 <body>
