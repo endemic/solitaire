@@ -29,6 +29,7 @@
 
 <script src="scripts/shuffle.js"></script>
 <script src="scripts/card.js"></script>
+<script src="scripts/stack.js"></script>
 
   <script>
     const SUITES = ['hearts', 'diamonds', 'spades', 'clubs'];
@@ -120,8 +121,6 @@
       IMAGES[key].addEventListener('load', onImageLoad);
     });
 
-
-
     const dragDemo = e => {
       const canvas = document.getElementById('game');
       const context = canvas.getContext('2d');
@@ -150,168 +149,26 @@
 
       // "talon" (draw pile)
       // placed in the upper left hand corner
-      let talon = {
-        x: margin,
-        y: margin,
-        cards: []
-      };
+      let talon = new Stack(margin, margin);
 
       // "waste" (play stack)
       // placed relative to the talon
-      let waste = {
-        x: talon.x + cardWidth + margin,
-        y: talon.y,
-        cards: []
-      };
+      let waste = new Stack(talon.x + cardWidth + margin, talon.y);
 
       // 4 "foundations"
       // aligned vertically with talon/waste, on right side of tableau
       let foundations = [];
       for (let i = 0; i < 4; i += 1) {
-        foundations.push({
-          x: width - (cardWidth * (i + 1)) - (margin * (i + 1)),
-          y: margin,
-          cards: []
-        });
+        foundations.push(new Stack(width - (cardWidth * (i + 1)) - (margin * (i + 1)), margin));
       }
 
       // 7 "piles"
       // spans the width of the tableau, under the talon/waste/foundations
       let piles = [];
       for (let i = 0; i < 7; i += 1) {
-        piles.push({
-          x: cardWidth * i + (margin * (i + 1)),
-          y: cardHeight + margin * 2,
-          cards: []
-        });
+        piles.push(new Stack(cardWidth * i + (margin * (i + 1)), cardHeight + margin * 2));
       }
 
-      // initialize deck
-      // SUITES.forEach(suite => {
-      //   RANKS.forEach(rank => {
-      //     let card = new Card(rank, suite, IMAGES);
-
-      //     // put all cards face down in the talon
-      //     card.x = talon.x;
-      //     card.y = talon.y;
-
-      //     talon.cards.push(card);
-      //   });
-      // });
-
-      // TODO: until card front images are complete
-      [
-        ['two', 'clubs'],
-        ['five', 'clubs'],
-        ['ten', 'diamonds'],
-        ['three', 'diamonds'],
-        ['two', 'diamonds'],
-        ['two', 'spades'],
-        ['four', 'hearts']
-      ].forEach(pair => {
-        let tmp = new Card(pair[0], pair[1], IMAGES);
-        tmp.x = talon.x;
-        tmp.y = talon.y;
-        talon.cards.push(tmp);
-      });
-
-      talon.cards.shuffle();
-
-      const update = () => {
-        // clear previous contents
-        context.clearRect(0, 0, width, height);
-
-        drawTalon();
-
-        drawWaste();
-
-        foundations.forEach(f => drawFoundation(f));
-
-        piles.forEach(p => drawPile(p));
-
-        drawGrabbed();
-      };
-
-      const drawTalon = () => {
-        if (talon.cards.length === 0) {
-          context.drawImage(IMAGES['backs_target'], talon.x, talon.y);
-
-          return;
-        }
-
-        // we only need to draw the "top-most" card (which is the last in the array)
-        context.drawImage(talon.cards[talon.cards.length - 1].image, talon.x, talon.y);
-      };
-
-      const drawWaste = () => {
-        if (waste.cards.length === 0) {
-          context.drawImage(IMAGES['backs_target'], waste.x, waste.y);
-
-          return;
-        }
-
-        // only need to draw the first card
-        // TODO: with three card draw, we'll have to draw 3 cards offset
-        context.drawImage(waste.cards[0].image, waste.x, waste.y);
-      };
-
-      const drawFoundation = f => {
-        if (f.cards.length === 0) {
-          context.drawImage(IMAGES['backs_target'], f.x, f.y);
-
-          return;
-        }
-
-        // only draw the top-most card
-        context.drawImage(f.cards[f.cards.length - 1].image, f.x, f.y);
-      };
-
-      const drawPile = p => {
-        if (p.cards.length === 0) {
-          context.drawImage(IMAGES['backs_target'], p.x, p.y);
-
-          return;
-        }
-
-        // only draw the top-most card
-        // TODO: need to draw these stacks in an offset way, such that
-        // we can see each card in the stack;
-        // implementation idea: set the card positions on each draw call
-        // that way I don't have to set those values when the card is dropped
-        context.drawImage(p.cards[p.cards.length - 1].image, p.x, p.y);
-      };
-
-      const drawGrabbed = () => {
-        if (!grabbed) {
-          return;
-        }
-
-        context.drawImage(grabbed.image, grabbed.x, grabbed.y);
-      };
-
-      // bool whether a card has been picked up or not
-      let grabbed = null;
-
-      // record the cursor offset where the card was picked up,
-      // so clicking the card doesn't cause it to "jump" to the cursor
-      let grabOffset = {x: 0, y: 0};
-
-      // initial draw
-      update();
-
-      // rudimentary bounding box intersection
-      // TODO: make this a check to see if two cards overlap, and the percentage of overlap
-      // e.g. if the card is overlapping two drop points, choose the one with the greater overlap
-      const touchedStack = ({x, y}) => {
-        return stacks.findIndex(stack => {
-          return x > stack.x &&
-            x < stack.x + cardWidth &&
-            y > stack.y &&
-            y < stack.y + cardHeight;
-        });
-      };
-
-      //
       const touchedCard = (point, card) => {
         return point.x > card.x &&
             point.x < card.x + cardWidth &&
@@ -339,6 +196,180 @@
         }
       };
 
+      // expect the argument passed to this function to be an
+      // object with a `child` property
+      const getLastCard = card => {
+        let last = card;
+
+        while (last.child) {
+          last = last.child;
+        }
+
+        return last;
+      };
+
+      // given a "card" object with properties {x, y, child},
+      // draw the card and all the cards under it
+      const drawCardStack = (card, x, y) => {
+        card.x = x;
+        card.y = y;
+
+        context.drawImage(card.image, card.x, card.y);
+
+        if (card.child) {
+          drawCardStack(card.child, x, y + 18);
+        }
+      };
+
+
+      // initialize deck
+      // SUITES.forEach(suite => {
+      //   RANKS.forEach(rank => {
+      //     let card = new Card(rank, suite, IMAGES);
+
+      //     // put all cards face down in the talon
+      //     card.x = talon.x;
+      //     card.y = talon.y;
+
+      //     talon.cards.push(card);
+      //   });
+      // });
+
+      // TODO: until card front images are complete
+      let tmpCardList = [
+        ['two', 'clubs'],
+        ['five', 'clubs'],
+        ['ten', 'diamonds'],
+        ['three', 'diamonds'],
+        ['two', 'diamonds'],
+        ['two', 'spades'],
+        ['four', 'hearts']
+      ].shuffle();
+
+      // top-level "parent" is the empty talon spot
+      let parent = talon;
+
+      for (let i = 0; i < tmpCardList.length; i += 1) {
+        let pair = tmpCardList[i];
+
+        // create new card obj
+        let card = new Card(pair[0], pair[1], IMAGES);
+
+        // set its position
+        // TODO: might not need this
+        card.x = talon.x;
+        card.y = talon.y;
+
+        // set up parent <-> child link
+        parent.child = card;
+        card.parent = parent;
+
+        // reset for the next parent
+        parent = card;
+      }
+
+      const update = () => {
+        // clear previous contents
+        context.clearRect(0, 0, width, height);
+
+        drawTalon();
+
+        drawWaste();
+
+        foundations.forEach(f => drawFoundation(f));
+
+        piles.forEach(p => drawPile(p));
+
+        drawGrabbed();
+      };
+
+      const drawTalon = () => {
+        if (!talon.hasCards) {
+          context.drawImage(IMAGES['backs_target'], talon.x, talon.y);
+
+          return;
+        }
+
+        let card = getLastCard(talon);
+
+        // ensure card has correct coordinates
+        card.x = talon.x;
+        card.y = talon.y;
+
+        // only need to draw the card on top; the rest are hidden underneath
+        context.drawImage(card.image, card.x, card.y);
+      };
+
+      const drawWaste = () => {
+        if (!waste.hasCards) {
+          context.drawImage(IMAGES['backs_target'], waste.x, waste.y);
+
+          return;
+        }
+
+        let card = getLastCard(waste);
+
+        card.x = waste.x;
+        card.y = waste.y;
+
+        // only need to draw the card on top; the rest are hidden underneath
+        // TODO: with three card draw, we'll have to draw 3 cards offset
+        context.drawImage(card.image, card.x, card.y);
+      };
+
+      const drawFoundation = f => {
+        if (!f.hasCards) {
+          context.drawImage(IMAGES['backs_target'], f.x, f.y);
+
+          return;
+        }
+
+        let card = getLastCard(f);
+
+        // only draw the top-most card
+        context.drawImage(card.image, f.x, f.y);
+      };
+
+      const drawPile = p => {
+        if (!p.hasCards) {
+          context.drawImage(IMAGES['backs_target'], p.x, p.y);
+
+          return;
+        }
+
+        drawCardStack(p.child, p.x, p.y);
+      };
+
+      const drawGrabbed = () => {
+        if (!grabbed) {
+          return;
+        }
+
+        drawCardStack(grabbed, grabbed.x, grabbed.y);
+      };
+
+      // bool whether a card has been picked up or not
+      let grabbed = null;
+
+      // record the cursor offset where the card was picked up,
+      // so clicking the card doesn't cause it to "jump" to the cursor
+      let grabOffset = {x: 0, y: 0};
+
+      // initial draw
+      update();
+
+      // rudimentary bounding box intersection
+      // TODO: make this a check to see if two cards overlap, and the percentage of overlap
+      // e.g. if the card is overlapping two drop points, choose the one with the greater overlap
+      const touchedStack = ({x, y}) => {
+        return stacks.findIndex(stack => {
+          return x > stack.x &&
+            x < stack.x + cardWidth &&
+            y > stack.y &&
+            y < stack.y + cardHeight;
+        });
+      };
+
       const onDown = e => {
         e.preventDefault();
 
@@ -346,30 +377,49 @@
 
         // if player clicks the talon
         if (touchedCard(point, talon)) {
-          // and there are still cards left
-          if (talon.cards.length > 0) {
-            // flip one over onto the waste pile
-            let card = talon.cards.pop();
+          if (talon.hasCards) {
+            let card = getLastCard(talon);
+            let newParent = getLastCard(waste);
+
             card.faceUp = true;
-            card.x = waste.x;
-            card.y = waste.y;
-            waste.cards.unshift(card);
+
+            // TODO: perhaps extract this kinda weird logic?
+            // break from the previous "parent" card
+            card.parent.child = null;
+
+            // set the new parent
+            card.parent = newParent;
+
+            // set the new child
+            newParent.child = card;
           } else {
-            // otherwise, move the waste back onto the talon
-            talon.cards = waste.cards.map(c => {
-              c.faceUp = false;
-              return c;
-            }).reverse();
-            waste.cards = [];
+            // move waste back onto the talon
+            // last child card in the waste is the first child card in the talon
+            // also need to set `card.faceUp = false`
+            while (waste.hasCards) {
+              // note this is inverse of previous condition
+              let card = getLastCard(waste);
+              let newParent = getLastCard(talon);
+
+              card.faceUp = false;
+
+              card.parent.child = null;
+              card.parent = newParent;
+              newParent.child = card;
+            }
           }
         }
 
         // if player clicks the waste pile
         // "grab" the top-most card
-        if (touchedCard(point, waste)) {
+        if (touchedCard(point, waste) && waste.hasCards) {
           canvas.style.cursor = 'grabbing';
 
-          grabbed = waste.cards.shift();
+          grabbed = getLastCard(waste);
+
+          // remove card from "waste" list
+          grabbed.parent.child = null;
+
           grabOffset = {
             x: point.x - grabbed.x,
             y: point.y - grabbed.y
@@ -383,6 +433,20 @@
         // TODO: allow player to pick up cards from piles
         // check collision detection against visible card fragments, as well
         // as the entire card on top of the pile
+        if (touchedCard(point, piles[0])) {
+          canvas.style.cursor = 'grabbing';
+
+          // TODO: this is hard-coded
+          grabbed = piles[0].child;
+          grabOffset = {
+            x: point.x - grabbed.x,
+            y: point.y - grabbed.y
+          };
+
+          // break the parent -> child connection so the cards are no longer drawn at the pile
+          // but keep the parent <- child connection until cards are dropped
+          piles[0].child = null;
+        }
 
         update();
       };
@@ -420,53 +484,34 @@
 
         let valid = false;
 
-        // check foundations
+        // check to see if card can be played on foundations
         foundations.forEach(f => {
           if (touchedCard(point, f)) {
             valid = true;
 
-            f.cards.push(grabbed);
-
-            // this sets the parent/child of the card stack
-            // not sure it is necessary to have both the card array of the stack
-            // as well as the "linked list"
-            if (f.cards.length === 0) {
-              grabbed.parent = f;
-            } else {
-              let newParent = f.cards[f.cards.length - 1];
-              newParent.child = grabbed;
-              grabbed.parent = newParent;
-            }
+            let last = getLastCard(f);
+            last.child = grabbed;
+            grabbed.parent = last;
           }
         });
 
-        // check piles
+        // check to see if card can be played on piles
         piles.forEach(p => {
           if (touchedCard(point, p)) {
             valid = true;
 
-            p.cards.push(grabbed);
-
-            // this sets the parent/child of the card stack
-            // not sure it is necessary to have both the card array of the stack
-            // as well as the "linked list"
-            if (p.cards.length === 0) {
-              grabbed.parent = p;
-            } else {
-              let newParent = p.cards[p.cards.length - 1];
-              newParent.child = grabbed;
-              grabbed.parent = newParent;
-            }
+            let last = getLastCard(p);
+            last.child = grabbed;
+            grabbed.parent = last;
           }
         });
 
         // if no valid play was made
         if (!valid) {
           // put the card back where it was
-          // TODO: how to store the previous location?
-          grabbed.x = waste.x;
-          grabbed.y = waste.y;
-          waste.cards.unshift(grabbed);
+          // we do this by re-establishing the link from the parent -> child,
+          // so the parent object (waste, pile, etc.) will have a link to the child again
+          grabbed.parent.child = grabbed;
         }
 
         // "release" reference to card

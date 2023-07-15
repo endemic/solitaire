@@ -2,6 +2,8 @@ class Card {
   faceUp = false;
   x = 0;
   y = 0;
+  width = 75;
+  height = 100;
   backImg = null;
   frontImg = null;
   suite = null;
