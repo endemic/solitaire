@@ -176,6 +176,31 @@
             point.y < card.y + cardHeight;
       };
 
+      // return the card in a stack of cards that was touched
+      const touchedStack = (point, stack) => {
+        if (!stack.hasCards) {
+          return;
+        }
+
+        let card = stack.child;
+
+        do {
+          // cards under other cards only have 18px of touchable space
+          let height = card.child ? 18 : cardHeight;
+
+          if (point.x > card.x &&
+            point.x < card.x + cardWidth &&
+            point.y > card.y &&
+            point.y < card.y + height) {
+              return card;
+            }
+
+          // look at the next card
+          card = card.child;
+        } while (card);
+      };
+
+
       const getCoords = event => {
         // need to scale the touches by the actual size of the canvas;
         // e.g. the canvas still thinks it is 605px wide even if it is
@@ -200,9 +225,15 @@
       // object with a `child` property
       const getLastCard = card => {
         let last = card;
+        let count = 0;
 
         while (last.child) {
           last = last.child;
+
+          // TODO: remove this eventually
+          if (count++ > 100) {
+            throw new Error('Invalid parent/child card link.');
+          }
         }
 
         return last;
@@ -255,11 +286,6 @@
         // create new card obj
         let card = new Card(pair[0], pair[1], IMAGES);
 
-        // set its position
-        // TODO: might not need this
-        card.x = talon.x;
-        card.y = talon.y;
-
         // set up parent <-> child link
         parent.child = card;
         card.parent = parent;
@@ -272,14 +298,13 @@
         // clear previous contents
         context.clearRect(0, 0, width, height);
 
+        // draw card piles
         drawTalon();
-
         drawWaste();
-
         foundations.forEach(f => drawFoundation(f));
-
         piles.forEach(p => drawPile(p));
 
+        // draw any cards currently being moved by player
         drawGrabbed();
       };
 
@@ -326,8 +351,11 @@
 
         let card = getLastCard(f);
 
+        card.x = f.x;
+        card.y = f.y;
+
         // only draw the top-most card
-        context.drawImage(card.image, f.x, f.y);
+        context.drawImage(card.image, card.x, card.y);
       };
 
       const drawPile = p => {
@@ -337,13 +365,20 @@
           return;
         }
 
-        drawCardStack(p.child, p.x, p.y);
+        let card = p.child;
+
+        card.x = p.x;
+        card.y = p.y
+
+        drawCardStack(card, card.x, card.y);
       };
 
       const drawGrabbed = () => {
         if (!grabbed) {
           return;
         }
+
+        // position of top grabbed card is updated in the `onMove` handler
 
         drawCardStack(grabbed, grabbed.x, grabbed.y);
       };
@@ -357,18 +392,6 @@
 
       // initial draw
       update();
-
-      // rudimentary bounding box intersection
-      // TODO: make this a check to see if two cards overlap, and the percentage of overlap
-      // e.g. if the card is overlapping two drop points, choose the one with the greater overlap
-      const touchedStack = ({x, y}) => {
-        return stacks.findIndex(stack => {
-          return x > stack.x &&
-            x < stack.x + cardWidth &&
-            y > stack.y &&
-            y < stack.y + cardHeight;
-        });
-      };
 
       const onDown = e => {
         e.preventDefault();
@@ -426,28 +449,42 @@
           };
         }
 
-        // TODO: allow player to pick cards back up off the foundations
-        // "parent" card for the first card in the foundation pile will
-        // probably be the foundation itself?
+        // allow player to pick cards back up off the foundations if needed
+        foundations.forEach(f => {
+          if (touchedCard(point, f) && f.hasCards) {
+            grabbed = getLastCard(f);
 
-        // TODO: allow player to pick up cards from piles
-        // check collision detection against visible card fragments, as well
-        // as the entire card on top of the pile
-        if (touchedCard(point, piles[0])) {
-          canvas.style.cursor = 'grabbing';
+            // remove card from "foundation" list
+            grabbed.parent.child = null;
 
-          // TODO: this is hard-coded
-          grabbed = piles[0].child;
-          grabOffset = {
-            x: point.x - grabbed.x,
-            y: point.y - grabbed.y
-          };
+            grabOffset = {
+              x: point.x - grabbed.x,
+              y: point.y - grabbed.y
+            };
+          }
+        });
 
-          // break the parent -> child connection so the cards are no longer drawn at the pile
-          // but keep the parent <- child connection until cards are dropped
-          piles[0].child = null;
-        }
+        // check for picking up cards on play piles
+        piles.forEach(p => {
+          let card = touchedStack(point, p);
 
+          if (card) {
+            canvas.style.cursor = 'grabbing';
+
+            grabbed = card;
+
+            // break the parent -> child connection so the card(s) are no longer drawn at the source
+            // but keep the parent <- child connection until card(s) are dropped
+            grabbed.parent.child = null;
+
+            grabOffset = {
+              x: point.x - grabbed.x,
+              y: point.y - grabbed.y
+            };
+          }
+        });
+
+        // this should really be called `draw`
         update();
       };
 
