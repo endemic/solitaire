@@ -26,4 +26,4 @@ HTML/CSS(?)/JS implementation of Solitaire. Using the classic Windows version as
 - [x] allow picking up cards in piles
 - [ ] allow dropping cards on piles without touching the single "pile" space at the top of the stack
 - [ ] start making rules for alternating red/black in descending order when dropping cards
-- [ ] RE: above; don't allow placing cards on facedown cards
+- [x] RE: above; don't allow placing cards on facedown cards

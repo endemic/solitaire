@@ -535,8 +535,13 @@ const klondike = e => {
         valid = true;
 
         let last = getLastCard(p);
-        last.child = grabbed;
-        grabbed.parent = last;
+
+        // card has to be face up to play on
+        if (last.faceUp) {
+          valid = true;
+          last.child = grabbed;
+          grabbed.parent = last;
+        }
       }
     });
 
