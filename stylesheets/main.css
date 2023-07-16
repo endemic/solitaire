@@ -1,0 +1,18 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body { text-align: center; }
+
+#game {
+  margin: auto;
+  background-color: #0a5;
+  max-width: 100%;
+  max-height: 100%;
+  /* TODO: this doesn't seem to work on an actual phone */
+  aspect-ratio: 4 / 3;
+  cursor: grab;
+}

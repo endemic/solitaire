@@ -22,5 +22,8 @@ HTML/CSS(?)/JS implementation of Solitaire. Using the classic Windows version as
 - [x] get the proportions right, and see how playable it is on a smaller phone in portrait mode
   * can possibly make the cards a bit larger (currently 75x100)
 - [ ] placeholder images for card fronts
-- [ ] draw cards in piles offset
-- [ ] allow picking up cards in piles
+- [x] draw cards in piles offset
+- [x] allow picking up cards in piles
+- [ ] allow dropping cards on piles without touching the single "pile" space at the top of the stack
+- [ ] start making rules for alternating red/black in descending order when dropping cards
+- [ ] RE: above; don't allow placing cards on facedown cards
