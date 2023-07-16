@@ -531,9 +531,7 @@ const klondike = e => {
 
     // check to see if card can be played on piles
     piles.forEach(p => {
-      if (touchedCard(point, p)) {
-        valid = true;
-
+      if (touchedStack(point, p)) {
         let last = getLastCard(p);
 
         // card has to be face up to play on
