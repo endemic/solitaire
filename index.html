@@ -247,8 +247,15 @@
 
         context.drawImage(card.image, card.x, card.y);
 
+        let offset = 18;
+
+        // if cards in play piles are still face down, draw them closer together
+        if (!card.faceUp) {
+          offset = 8;
+        }
+
         if (card.child) {
-          drawCardStack(card.child, x, y + 18);
+          drawCardStack(card.child, x, y + offset);
         }
       };
 
@@ -274,16 +281,39 @@
         DECK.push(new Card('four', 'hearts', IMAGES));
       }
 
-      // TODO: set up piles
-      for (let i = 0; i < piles.length; i += 1) {
+      DECK.shuffle();
+
+      // populate the playing piles
+      // This is super janky -- there is probably a better way to do this
+      // TODO: 100ms delay (or similar) between placing cards
+      let faceUpIndex = 0;
+      for (let i = 0; i < Math.pow(piles.length, 2); i += 1) {
+        let j = i % piles.length;
+
+        let lastCard = getLastCard(piles[j]);
+
+        if (lastCard.faceUp) {
+          continue;
+        }
+
         let card = DECK.pop();
 
-        let lastCard = getLastCard(piles[i]);
-
-        // TODO: determine if this is the last card; if so, place face up
+        if (i === faceUpIndex) {
+          card.faceUp = true;
+          faceUpIndex += piles.length + 1;
+        }
 
         lastCard.child = card;
         card.parent = lastCard;
+      }
+
+      // put the rest of the cards in the talon
+      while (DECK.length) {
+        let card = DECK.pop();
+        let parent = getLastCard(talon);
+
+        parent.child = card;
+        card.parent = parent;
       }
 
       // TODO: probably change this function name to `draw`
