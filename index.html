@@ -266,34 +266,27 @@
       //   });
       // });
 
-      // TODO: until card front images are complete
-      let tmpCardList = [
-        ['two', 'clubs'],
-        ['five', 'clubs'],
-        ['ten', 'diamonds'],
-        ['three', 'diamonds'],
-        ['two', 'diamonds'],
-        ['two', 'spades'],
-        ['four', 'hearts']
-      ].shuffle();
 
-      // top-level "parent" is the empty talon spot
-      let parent = talon;
+      // initialize deck
+      const DECK = [];
 
-      for (let i = 0; i < tmpCardList.length; i += 1) {
-        let pair = tmpCardList[i];
-
-        // create new card obj
-        let card = new Card(pair[0], pair[1], IMAGES);
-
-        // set up parent <-> child link
-        parent.child = card;
-        card.parent = parent;
-
-        // reset for the next parent
-        parent = card;
+      for (let i = 0; i < 52; i += 1) {
+        DECK.push(new Card('four', 'hearts', IMAGES));
       }
 
+      // TODO: set up piles
+      for (let i = 0; i < piles.length; i += 1) {
+        let card = DECK.pop();
+
+        let lastCard = getLastCard(piles[i]);
+
+        // TODO: determine if this is the last card; if so, place face up
+
+        lastCard.child = card;
+        card.parent = lastCard;
+      }
+
+      // TODO: probably change this function name to `draw`
       const update = () => {
         // clear previous contents
         context.clearRect(0, 0, width, height);
@@ -470,6 +463,10 @@
 
           if (card) {
             canvas.style.cursor = 'grabbing';
+
+            if (!card.faceUp) {
+              card.faceUp = true;
+            }
 
             grabbed = card;
 
