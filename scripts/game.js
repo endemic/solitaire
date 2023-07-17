@@ -206,6 +206,18 @@ const klondike = e => {
     return last;
   };
 
+  const countStack = stack => {
+    let count = 0;
+    let parent = stack;
+
+    while (parent.child) {
+      count += 1;
+      parent = parent.child;
+    }
+
+    return count;
+  }
+
   // given a "card" object with properties {x, y, child},
   // draw the card and all the cards under it
   const drawCardStack = (card, x, y) => {
@@ -219,7 +231,7 @@ const klondike = e => {
     // if cards in play piles are still face down, draw them closer together
     if (!card.faceUp) {
       // TODO: extract this magic number
-      offset = 8;
+      offset = 3;
     }
 
     if (card.child) {
@@ -306,14 +318,32 @@ const klondike = e => {
       return;
     }
 
-    let card = getLastCard(talon);
+    let card = talon.child;
+    let drawnCards = 0;
+    let cardCount = 0;
+    let x = talon.x;
+    let y = talon.y;
+    let offset = {x: 0, y: 0};
 
-    // ensure card has correct coordinates
-    card.x = talon.x;
-    card.y = talon.y;
+    while (card) {
+      // go thru list of cards; for each 8, draw the next one at an offset
+      if (Math.floor(cardCount / 8) === drawnCards) {
+        drawnCards += 1;
 
-    // only need to draw the card on top; the rest are hidden underneath
-    context.drawImage(card.image, card.x, card.y);
+        // ensure card has correct coordinates
+        card.x = x + offset.x;
+        card.y = y + offset.y;
+
+        context.drawImage(card.image, card.x, card.y);
+
+        // update offset for next card
+        offset.x += 2;
+        offset.y += 1;
+      }
+
+      cardCount += 1;
+      card = card.child;
+    }
   };
 
   const drawWaste = () => {
@@ -324,6 +354,9 @@ const klondike = e => {
     }
 
     let card = getLastCard(waste);
+    let cardCount = countStack(waste);
+
+    // console.log(`${cardCount} cards in waste`);
 
     card.x = waste.x;
     card.y = waste.y;
