@@ -321,8 +321,6 @@ const klondike = e => {
     let card = talon.child;
     let drawnCards = 0;
     let cardCount = 0;
-    let x = talon.x;
-    let y = talon.y;
     let offset = {x: 0, y: 0};
 
     while (card) {
@@ -331,8 +329,8 @@ const klondike = e => {
         drawnCards += 1;
 
         // ensure card has correct coordinates
-        card.x = x + offset.x;
-        card.y = y + offset.y;
+        card.x = talon.x + offset.x;
+        card.y = talon.y + offset.y;
 
         context.drawImage(card.image, card.x, card.y);
 
@@ -353,17 +351,30 @@ const klondike = e => {
       return;
     }
 
-    let card = getLastCard(waste);
-    let cardCount = countStack(waste);
+    let card = waste.child;
+    let drawnCards = 0;
+    let cardCount = 0;
+    let offset = {x: 0, y: 0};
 
-    // console.log(`${cardCount} cards in waste`);
+    while (card) {
+      // go thru list of cards; for each 8, draw the next one at an offset
+      if (Math.floor(cardCount / 8) === drawnCards) {
+        drawnCards += 1;
 
-    card.x = waste.x;
-    card.y = waste.y;
+        // ensure card has correct coordinates
+        card.x = waste.x + offset.x;
+        card.y = waste.y + offset.y;
 
-    // only need to draw the card on top; the rest are hidden underneath
-    // TODO: with three card draw, we'll have to draw 3 cards offset
-    context.drawImage(card.image, card.x, card.y);
+        context.drawImage(card.image, card.x, card.y);
+
+        // update offset for next card
+        offset.x += 2;
+        offset.y += 1;
+      }
+
+      cardCount += 1;
+      card = card.child;
+    }
   };
 
   const drawFoundation = f => {
