@@ -138,24 +138,20 @@ const klondike = e => {
 
   const touchedCard = (point, card) => {
     return point.x > card.x &&
-        point.x < card.x + cardWidth &&
+        point.x < card.x + card.width &&
         point.y > card.y &&
-        point.y < card.y + cardHeight;
+        point.y < card.y + card.height;
   };
 
   // return the card in a stack of cards that was touched
   const touchedStack = (point, stack) => {
-    if (!stack.hasCards) {
-      return;
-    }
-
-    let card = stack.child;
+    let card = stack;
 
     do {
       // cards under other cards only have 18px (`overlapOffset`) of touchable space
-      let height = card.child ? overlapOffset : cardHeight;
+      let height = card.child ? overlapOffset : card.height;
 
-      if (point.x > card.x && point.x < card.x + cardWidth &&
+      if (point.x > card.x && point.x < card.x + card.height &&
           point.y > card.y && point.y < card.y + height &&
           // only allow face up cards, or face down cards with no cards on top
           (card.faceUp || !card.child)) {
@@ -230,11 +226,6 @@ const klondike = e => {
   };
 
   const validPilePlay = (card, target) => {
-
-    // TODO: currently putting a king on an empty pile is not working
-    console.log(`Trying to play ${card.rank} on ${target.rank}`);
-
-
     // if no other cards in the pile, only kings are allowed
     if (!target.parent && card.rank === 'king') {
       return true;
