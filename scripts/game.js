@@ -102,24 +102,24 @@ const klondike = e => {
 
   // "talon" (draw pile)
   // placed in the upper left hand corner
-  let talon = new Stack(margin, margin, 'talon');
+  let talon = new Stack(margin, margin);
 
   // "waste" (play stack)
   // placed relative to the talon
-  let waste = new Stack(talon.x + cardWidth + margin, talon.y, 'waste');
+  let waste = new Stack(talon.x + cardWidth + margin, talon.y);
 
   // 4 "foundations"
   // aligned vertically with talon/waste, on right side of tableau
   let foundations = [];
   for (let i = 0; i < 4; i += 1) {
-    foundations.push(new Stack(width - (cardWidth * (i + 1)) - (margin * (i + 1)), margin, 'foundation'));
+    foundations.push(new Stack(width - (cardWidth * (i + 1)) - (margin * (i + 1)), margin));
   }
 
   // 7 "piles"
   // spans the width of the tableau, under the talon/waste/foundations
   let piles = [];
   for (let i = 0; i < 7; i += 1) {
-    piles.push(new Stack(cardWidth * i + (margin * (i + 1)), cardHeight + margin * 2, 'pile'));
+    piles.push(new Stack(cardWidth * i + (margin * (i + 1)), cardHeight + margin * 2));
   }
 
   const touchedCard = (point, card) => {
@@ -137,7 +137,7 @@ const klondike = e => {
       // cards under other cards only have 18px (`overlapOffset`) of touchable space
       let height = card.child ? overlapOffset : card.height;
 
-      if (point.x > card.x && point.x < card.x + card.height &&
+      if (point.x > card.x && point.x < card.x + card.width &&
           point.y > card.y && point.y < card.y + height &&
           // only allow face up cards, or face down cards with no cards on top
           (card.faceUp || !card.child)) {
@@ -507,6 +507,7 @@ const klondike = e => {
     piles.forEach(p => {
       let card = touchedStack(point, p);
 
+      // if player touched a card
       if (card) {
         canvas.style.cursor = 'grabbing';
 
@@ -606,6 +607,69 @@ const klondike = e => {
     update();
   };
 
+  // allow double click/tap to auto-play cards
+  const onDouble = e => {
+    e.preventDefault();
+
+    let point = getCoords(e);
+
+    // play directly from the waste pile
+    if (touchedCard(point, waste) && waste.hasCards) {
+      let card = getLastCard(waste);
+
+      // determine if card can be played on one of the foundation stacks
+      for (let i = foundations.length - 1; i >= 0; i -= 1) {
+        let f = foundations[i];
+        let target = getLastCard(f);
+        let valid = validFoundationPlay(card, target);
+
+        if (valid) {
+          // remove card from waste
+          card.parent.child = null;
+
+          // add to foundation stack
+          target.child = card;
+          card.parent = target;
+
+          // made a valid play, no longer need to loop checking other foundation stacks
+          break;
+        }
+      }
+    }
+
+    // after double click, check each pile
+    for (let i = 0; i < piles.length; i += 1) {
+      let p = piles[i];
+
+      // if pile was double-clicked
+      if (touchedStack(point, p)) {
+        // find the last card on the pile
+        let card = getLastCard(p);
+
+        // determine if that same card can be played on one of the foundation stacks
+        for (let i = foundations.length - 1; i >= 0; i -= 1) {
+          let f = foundations[i];
+          let target = getLastCard(f);
+          let valid = validFoundationPlay(card, target);
+
+          if (valid) {
+            // remove card from pile
+            card.parent.child = null;
+
+            // add to foundation stack
+            target.child = card;
+            card.parent = target;
+
+            // made a valid play, no longer need to loop checking other foundation stacks
+            break;
+          }
+        }
+      }
+    }
+
+    update();
+  };
+
   canvas.addEventListener('mousedown', onDown);
   canvas.addEventListener('mousemove', onMove);
   canvas.addEventListener('mouseup', onUp);
@@ -613,4 +677,6 @@ const klondike = e => {
   canvas.addEventListener('touchstart', onDown);
   canvas.addEventListener('touchmove', onMove);
   canvas.addEventListener('touchend', onUp);
+
+  canvas.addEventListener('dblclick', onDouble)
 };
