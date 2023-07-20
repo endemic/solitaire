@@ -91,20 +91,6 @@ const klondike = e => {
   const canvas = document.getElementById('game');
   const context = canvas.getContext('2d');
 
-  // TODO: determine the necessary max width/height based on screenshots of the old game
-  // cards are 71x96px
-  // margin between cards horizontally is 16px
-  // margin between cards vertically is 6px
-
-  // we could do 75x100px cards
-  // 10px margin both horizontally & vertically
-  // 525px total width of all cards
-  // 80px (8 * 10px) horizontal margin
-
-  // 605px max width
-  // at 4:3 aspect ratio, that makes height 454px
-  // is that a viable size?
-
   const margin = 10;
   const width = 605;
   const height = 454;
