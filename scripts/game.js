@@ -1,4 +1,4 @@
-const SUITES = ['hearts', 'diamonds', 'spades', 'clubs'];
+const SUITS = ['hearts', 'diamonds', 'spades', 'clubs'];
 const RANKS = ['ace', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'jack', 'queen', 'king'];
 
 const IMG_SRC = [
@@ -79,7 +79,7 @@ const onImageLoad = e => {
 
 // enumerate over image sources, and load them into memory
 IMG_SRC.forEach(src => {
-  // key is in format `suite_rank` -- probably a better way to do this
+  // key is in format `suit_rank` -- probably a better way to do this
   let key = src.match(/(?<=images\/)\w+\/\w+/)[0].replace('/','_');
 
   IMAGES[key] = new Image();
@@ -116,24 +116,24 @@ const klondike = e => {
 
   // "talon" (draw pile)
   // placed in the upper left hand corner
-  let talon = new Stack(margin, margin);
+  let talon = new Stack(margin, margin, 'talon');
 
   // "waste" (play stack)
   // placed relative to the talon
-  let waste = new Stack(talon.x + cardWidth + margin, talon.y);
+  let waste = new Stack(talon.x + cardWidth + margin, talon.y, 'waste');
 
   // 4 "foundations"
   // aligned vertically with talon/waste, on right side of tableau
   let foundations = [];
   for (let i = 0; i < 4; i += 1) {
-    foundations.push(new Stack(width - (cardWidth * (i + 1)) - (margin * (i + 1)), margin));
+    foundations.push(new Stack(width - (cardWidth * (i + 1)) - (margin * (i + 1)), margin, 'foundation'));
   }
 
   // 7 "piles"
   // spans the width of the tableau, under the talon/waste/foundations
   let piles = [];
   for (let i = 0; i < 7; i += 1) {
-    piles.push(new Stack(cardWidth * i + (margin * (i + 1)), cardHeight + margin * 2));
+    piles.push(new Stack(cardWidth * i + (margin * (i + 1)), cardHeight + margin * 2, 'pile'));
   }
 
   const touchedCard = (point, card) => {
@@ -206,17 +206,49 @@ const klondike = e => {
     return last;
   };
 
-  const countStack = stack => {
-    let count = 0;
-    let parent = stack;
+  // returns a - b; e.g. 5 - 2 = 3
+  const rankDiff = (a, b) => RANKS.indexOf(a.rank) - RANKS.indexOf(b.rank);
 
-    while (parent.child) {
-      count += 1;
-      parent = parent.child;
+  const colorDiff = (a, b) => {
+    return (['hearts', 'diamonds'].indexOf(a.suit) > -1 && ['clubs', 'spades'].indexOf(b.suit) > -1) ||
+    (['hearts', 'diamonds'].indexOf(b.suit) > -1 && ['clubs', 'spades'].indexOf(a.suit) > -1);
+  }
+
+  const validFoundationPlay = (card, target) => {
+    // no other cards in the foundation, so (any suit) ace is allowed
+    if (!target.parent && card.rank === 'ace') {
+      return true;
     }
 
-    return count;
-  }
+    // if there are cards already played, ensure they are the same suit
+    // and the card rank is one higher than the target
+    if (card.suit === target.suit && rankDiff(card, target) === 1) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const validPilePlay = (card, target) => {
+
+    // TODO: currently putting a king on an empty pile is not working
+    console.log(`Trying to play ${card.rank} on ${target.rank}`);
+
+
+    // if no other cards in the pile, only kings are allowed
+    if (!target.parent && card.rank === 'king') {
+      return true;
+    }
+
+    // if there are cards already played, ensure they are alternating suits
+    // and the card rank is one lower than the target
+    // (and the target has to be face up, too)
+    if (colorDiff(card, target) && rankDiff(card, target) === -1 && target.faceUp) {
+      return true;
+    }
+
+    return false;
+  };
 
   // given a "card" object with properties {x, y, child},
   // draw the card and all the cards under it
@@ -243,9 +275,9 @@ const klondike = e => {
   // initialize deck
   const DECK = [];
 
-  SUITES.forEach(suite => {
+  SUITS.forEach(suit => {
     RANKS.forEach(rank => {
-      DECK.push(new Card(rank, suite, IMAGES));
+      DECK.push(new Card(rank, suit, IMAGES));
     });
   });
 
@@ -345,19 +377,24 @@ const klondike = e => {
     let offset = {x: 0, y: 0};
 
     while (card) {
-      // go thru list of cards; for each 8, draw the next one at an offset
-      if (Math.floor(cardCount / 8) === drawnCards) {
-        drawnCards += 1;
+      // ensure each card has correct coordinates
+      card.x = waste.x + offset.x;
+      card.y = waste.y + offset.y;
 
-        // ensure card has correct coordinates
-        card.x = waste.x + offset.x;
-        card.y = waste.y + offset.y;
+      // go thru list of cards; for each 8, draw the next one at an offset
+      if (Math.floor(cardCount / 8) > drawnCards) {
+        drawnCards += 1;
 
         context.drawImage(card.image, card.x, card.y);
 
         // update offset for next card
         offset.x += 2;
         offset.y += 1;
+      }
+
+      // ensure the last card on the stack is drawn
+      if (!card.child) {
+        context.drawImage(card.image, card.x, card.y);
       }
 
       cardCount += 1;
@@ -553,11 +590,14 @@ const klondike = e => {
     // check to see if card can be played on foundations
     foundations.forEach(f => {
       if (touchedCard(point, f)) {
-        valid = true;
-
         let last = getLastCard(f);
-        last.child = grabbed;
-        grabbed.parent = last;
+
+        valid = validFoundationPlay(grabbed, last)
+
+        if (valid) {
+          last.child = grabbed;
+          grabbed.parent = last;
+        }
       }
     });
 
@@ -566,9 +606,9 @@ const klondike = e => {
       if (touchedStack(point, p)) {
         let last = getLastCard(p);
 
-        // card has to be face up to play on
-        if (last.faceUp) {
-          valid = true;
+        valid = validPilePlay(grabbed, last);
+
+        if (valid) {
           last.child = grabbed;
           grabbed.parent = last;
         }

@@ -6,19 +6,18 @@ class Card {
   height = 100;
   backImg = null;
   frontImg = null;
-  suite = null;
+  suit = null;
   rank = null;
 
-  // TODO: figure out a way to link stacked cards together
   parent = null;
   child = null;
 
-  constructor(rank, suite, images) {
+  constructor(rank, suit, images) {
     this.rank = rank;
-    this.suite = suite;
+    this.suit = suit;
 
     this.backImg = images['backs_one'];
-    this.frontImg = images[`${this.suite}_${this.rank}`];
+    this.frontImg = images[`${this.suit}_${this.rank}`];
   }
 
   get image() {
@@ -27,5 +26,9 @@ class Card {
     }
 
     return this.backImg;
+  }
+
+  toString() {
+    return `${this.rank} ${this.suit}`;
   }
 }
