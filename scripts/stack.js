@@ -4,13 +4,19 @@ class Stack {
   width = 75;
   height = 100;
   child = null;
+  type = 'stack';
 
-  constructor(x, y) {
+  constructor(type, x, y) {
+    this.type = type
     this.x = x;
     this.y = y;
   }
 
   get hasCards() {
     return !!this.child;
+  }
+
+  toString() {
+    return `${this.type} stack`;
   }
 }

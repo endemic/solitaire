@@ -98,28 +98,30 @@ const klondike = e => {
   const cardHeight = 100;
   const overlapOffset = 18;
 
+  const undoStack = [];
+
   // initialize all places where a card can be placed - https://en.wikipedia.org/wiki/Glossary_of_patience_terms
 
   // "talon" (draw pile)
   // placed in the upper left hand corner
-  let talon = new Stack(margin, margin);
+  let talon = new Stack('talon', margin, margin);
 
   // "waste" (play stack)
   // placed relative to the talon
-  let waste = new Stack(talon.x + cardWidth + margin, talon.y);
+  let waste = new Stack('waste', talon.x + cardWidth + margin, talon.y);
 
   // 4 "foundations"
   // aligned vertically with talon/waste, on right side of tableau
   let foundations = [];
   for (let i = 0; i < 4; i += 1) {
-    foundations.push(new Stack(width - (cardWidth * (i + 1)) - (margin * (i + 1)), margin));
+    foundations.push(new Stack('foundation', width - (cardWidth * (i + 1)) - (margin * (i + 1)), margin));
   }
 
   // 7 "piles"
   // spans the width of the tableau, under the talon/waste/foundations
   let piles = [];
   for (let i = 0; i < 7; i += 1) {
-    piles.push(new Stack(cardWidth * i + (margin * (i + 1)), cardHeight + margin * 2));
+    piles.push(new Stack('pile', cardWidth * i + (margin * (i + 1)), cardHeight + margin * 2));
   }
 
   const touchedCard = (point, card) => {
@@ -568,13 +570,19 @@ const klondike = e => {
     // check to see if card can be played on foundations
     foundations.forEach(f => {
       if (touchedCard(point, f)) {
-        let last = getLastCard(f);
+        let target = getLastCard(f);
 
-        valid = validFoundationPlay(grabbed, last)
+        valid = validFoundationPlay(grabbed, target)
 
         if (valid) {
-          last.child = grabbed;
-          grabbed.parent = last;
+          undoStack.push({
+            card: grabbed,
+            target: target,
+            parent: grabbed.parent
+          });
+
+          target.child = grabbed;
+          grabbed.parent = target;
         }
       }
     });
@@ -582,13 +590,19 @@ const klondike = e => {
     // check to see if card can be played on piles
     piles.forEach(p => {
       if (touchedStack(point, p)) {
-        let last = getLastCard(p);
+        let target = getLastCard(p);
 
-        valid = validPilePlay(grabbed, last);
+        valid = validPilePlay(grabbed, target);
 
         if (valid) {
-          last.child = grabbed;
-          grabbed.parent = last;
+          undoStack.push({
+            card: grabbed,
+            target: target,
+            parent: grabbed.parent
+          });
+
+          target.child = grabbed;
+          grabbed.parent = target;
         }
       }
     });
@@ -624,6 +638,12 @@ const klondike = e => {
         let valid = validFoundationPlay(card, target);
 
         if (valid) {
+          undoStack.push({
+            card: card,
+            target: target,
+            parent: card.parent
+          });
+
           // remove card from waste
           card.parent.child = null;
 
@@ -653,6 +673,12 @@ const klondike = e => {
           let valid = validFoundationPlay(card, target);
 
           if (valid) {
+            undoStack.push({
+              card: card,
+              target: target,
+              parent: card.parent
+            });
+
             // remove card from pile
             card.parent.child = null;
 
@@ -678,5 +704,29 @@ const klondike = e => {
   canvas.addEventListener('touchmove', onMove);
   canvas.addEventListener('touchend', onUp);
 
-  canvas.addEventListener('dblclick', onDouble)
+  canvas.addEventListener('dblclick', onDouble);
+
+  window.addEventListener('keydown', e => {
+    // return unless the keypress is meta/contrl + z (for undo)
+    if (!(e.metaKey || e.ctrlKey) || e.key !== 'z') {
+      return;
+    }
+
+    if (undoStack.length < 1) {
+      console.log("Can't undo!");
+      return;
+    }
+
+    // get card state _before_ the most recent move
+    let {card, parent, target} = undoStack.pop();
+
+    // remove destination
+    target.child = null;
+
+    // reset the original parent <-> child card link
+    card.parent = parent;
+    parent.child = card;
+
+    update();
+  });
 };
