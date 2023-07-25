@@ -15,3 +15,4 @@ JavaScript/`<canvas>` implementation of Klondike Solitaire. With apologies to We
 - [x] Add "undo" feature
   * basically have to store the card that was moved, and the previous parent/child values, in a list that can be popped
 - [x] BUG: collision for grabbing a card extends too far to the right (x-axis); e.g. you can grab a card on a pile to the left even though it looks like you're on a different pile
+- [ ] BUG: possible race condition when double-clicking the last card in a pile to play it

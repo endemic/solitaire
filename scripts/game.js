@@ -1,67 +1,3 @@
-const SUITS = ['hearts', 'diamonds', 'spades', 'clubs'];
-const RANKS = ['ace', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'jack', 'queen', 'king'];
-
-const IMG_SRC = [
-  'images/backs/one.png',
-  'images/backs/target.png',
-
-  'images/hearts/ace.png',
-  'images/hearts/two.png',
-  'images/hearts/three.png',
-  'images/hearts/four.png',
-  'images/hearts/five.png',
-  'images/hearts/six.png',
-  'images/hearts/seven.png',
-  'images/hearts/eight.png',
-  'images/hearts/nine.png',
-  'images/hearts/ten.png',
-  'images/hearts/jack.png',
-  'images/hearts/queen.png',
-  'images/hearts/king.png',
-
-  'images/diamonds/ace.png',
-  'images/diamonds/two.png',
-  'images/diamonds/three.png',
-  'images/diamonds/four.png',
-  'images/diamonds/five.png',
-  'images/diamonds/six.png',
-  'images/diamonds/seven.png',
-  'images/diamonds/eight.png',
-  'images/diamonds/nine.png',
-  'images/diamonds/ten.png',
-  'images/diamonds/jack.png',
-  'images/diamonds/queen.png',
-  'images/diamonds/king.png',
-
-  'images/spades/ace.png',
-  'images/spades/two.png',
-  'images/spades/three.png',
-  'images/spades/four.png',
-  'images/spades/five.png',
-  'images/spades/six.png',
-  'images/spades/seven.png',
-  'images/spades/eight.png',
-  'images/spades/nine.png',
-  'images/spades/ten.png',
-  'images/spades/jack.png',
-  'images/spades/queen.png',
-  'images/spades/king.png',
-
-  'images/clubs/ace.png',
-  'images/clubs/two.png',
-  'images/clubs/three.png',
-  'images/clubs/four.png',
-  'images/clubs/five.png',
-  'images/clubs/six.png',
-  'images/clubs/seven.png',
-  'images/clubs/eight.png',
-  'images/clubs/nine.png',
-  'images/clubs/ten.png',
-  'images/clubs/jack.png',
-  'images/clubs/queen.png',
-  'images/clubs/king.png',
-];
-
 const IMAGES = {};
 let loadedImageCount = 0;
 
@@ -91,14 +27,14 @@ const klondike = e => {
   const canvas = document.getElementById('game');
   const context = canvas.getContext('2d');
 
-  const margin = 10;
-  const width = 605;
-  const height = 454;
-  const cardWidth = 75;
-  const cardHeight = 100;
-  const overlapOffset = 18;
-
   const undoStack = [];
+
+  // var to hold reference to grabbed card(s)
+  let grabbed = null;
+
+  // record the cursor offset where the card was picked up,
+  // so clicking the card doesn't cause it to "jump" to the cursor
+  let grabOffset = {x: 0, y: 0};
 
   // initialize all places where a card can be placed - https://en.wikipedia.org/wiki/Glossary_of_patience_terms
 
@@ -124,110 +60,7 @@ const klondike = e => {
     piles.push(new Stack('pile', cardWidth * i + (margin * (i + 1)), cardHeight + margin * 2));
   }
 
-  const touchedCard = (point, card) => {
-    return point.x > card.x &&
-        point.x < card.x + card.width &&
-        point.y > card.y &&
-        point.y < card.y + card.height;
-  };
 
-  // return the card in a stack of cards that was touched
-  const touchedStack = (point, stack) => {
-    let card = stack;
-
-    do {
-      // cards under other cards only have 18px (`overlapOffset`) of touchable space
-      let height = card.child ? overlapOffset : card.height;
-
-      if (point.x > card.x && point.x < card.x + card.width &&
-          point.y > card.y && point.y < card.y + height &&
-          // only allow face up cards, or face down cards with no cards on top
-          (card.faceUp || !card.child)) {
-          return card;
-        }
-
-      // look at the next card
-      card = card.child;
-    } while (card);
-  };
-
-
-  const getCoords = event => {
-    // need to scale the touches by the actual size of the canvas;
-    // e.g. the canvas still thinks it is 605px wide even if it is
-    // scaled to 400px by CSS rules
-    const scale = event.target.width / event.target.clientWidth;
-
-    if (event.changedTouches && event.changedTouches.length > 0) {
-      return {
-        x: event.changedTouches[0].clientX * scale,
-        y: event.changedTouches[0].clientY * scale
-      };
-    }
-
-    // this seems to translate to <canvas> coordinates
-    return {
-      x: event.x - event.target.offsetLeft,
-      y: event.y - event.target.offsetTop
-    }
-  };
-
-  // expect the argument passed to this function to be an
-  // object with a `child` property
-  const getLastCard = card => {
-    let last = card;
-    let count = 0;
-
-    while (last.child) {
-      last = last.child;
-
-      // TODO: remove this eventually
-      if (count++ > 100) {
-        throw new Error('Invalid parent/child card link.');
-      }
-    }
-
-    return last;
-  };
-
-  // returns a - b; e.g. 5 - 2 = 3
-  const rankDiff = (a, b) => RANKS.indexOf(a.rank) - RANKS.indexOf(b.rank);
-
-  const colorDiff = (a, b) => {
-    return (['hearts', 'diamonds'].indexOf(a.suit) > -1 && ['clubs', 'spades'].indexOf(b.suit) > -1) ||
-    (['hearts', 'diamonds'].indexOf(b.suit) > -1 && ['clubs', 'spades'].indexOf(a.suit) > -1);
-  }
-
-  const validFoundationPlay = (card, target) => {
-    // no other cards in the foundation, so (any suit) ace is allowed
-    if (!target.parent && card.rank === 'ace') {
-      return true;
-    }
-
-    // if there are cards already played, ensure they are the same suit
-    // and the card rank is one higher than the target
-    if (card.suit === target.suit && rankDiff(card, target) === 1) {
-      return true;
-    }
-
-    return false;
-  };
-
-  const validPilePlay = (card, target) => {
-    // if no other cards in the pile, only kings are allowed
-    if (!target.parent && card.rank === 'king') {
-      return true;
-    }
-
-    // if there are cards already played, ensure they are alternating suits
-    // and the card rank is one lower than the target
-    // (and the target has to be face up, too)
-    if (colorDiff(card, target) && rankDiff(card, target) === -1 && target.faceUp) {
-      return true;
-    }
-
-    return false;
-  };
 
   // given a "card" object with properties {x, y, child},
   // draw the card and all the cards under it
@@ -261,6 +94,24 @@ const klondike = e => {
   });
 
   DECK.shuffle();
+
+  // TEMP: put cards in foundations in order to test falling card demo
+  // for (let i = 0; i < foundations.length; i += 1) {
+  //   let target = foundations[i];
+
+  //   for (let j = 0; j < 13; j += 1) {
+  //     let card = DECK.shift();
+
+  //     card.faceUp = true;
+  //     card.x = target.x;
+  //     card.y = target.y;
+
+  //     card.parent = target;
+  //     target.child = card;
+
+  //     target = card;
+  //   }
+  // }
 
   // populate the playing piles
   // This is super janky -- there is probably a better way to do this
@@ -422,18 +273,27 @@ const klondike = e => {
     drawCardStack(grabbed, grabbed.x, grabbed.y);
   };
 
-  // bool whether a card has been picked up or not
-  let grabbed = null;
+  const checkWin = () => {
+    // ensure that each foundation has 13 cards; we
+    // don't check for matching suit or ascending rank because
+    // those checks are done when the card is laid down
+    return foundations.every(f => {
+      let count = 0;
+      let parent = f;
 
-  // record the cursor offset where the card was picked up,
-  // so clicking the card doesn't cause it to "jump" to the cursor
-  let grabOffset = {x: 0, y: 0};
+      while (parent.child) {
+        count += 1;
+        parent = parent.child;
+      }
+
+      return count === 13;
+    });
+  };
 
   // initial draw
   update();
 
   // Event handlers
-
   const onDown = e => {
     e.preventDefault();
 
@@ -619,6 +479,10 @@ const klondike = e => {
     grabbed = null;
 
     update();
+
+    if (checkWin()) {
+      interval = fallingCards(canvas, foundations);
+    }
   };
 
   // allow double click/tap to auto-play cards
@@ -694,6 +558,10 @@ const klondike = e => {
     }
 
     update();
+
+    if (checkWin()) {
+      interval = fallingCards(canvas, foundations);
+    }
   };
 
   canvas.addEventListener('mousedown', onDown);
