@@ -60,8 +60,6 @@ const klondike = e => {
     piles.push(new Stack('pile', cardWidth * i + (margin * (i + 1)), cardHeight + margin * 2));
   }
 
-
-
   // given a "card" object with properties {x, y, child},
   // draw the card and all the cards under it
   const drawCardStack = (card, x, y) => {
@@ -303,7 +301,7 @@ const klondike = e => {
     if (touchedCard(point, talon)) {
       if (talon.hasCards) {
         let card = getLastCard(talon);
-        let newParent = getLastCard(waste);
+        let target = getLastCard(waste);
 
         card.faceUp = true;
 
@@ -312,24 +310,29 @@ const klondike = e => {
         card.parent.child = null;
 
         // set the new parent
-        card.parent = newParent;
+        card.parent = target;
+        target.child = card;
 
-        // set the new child
-        newParent.child = card;
+        undoStack.push({
+          card: card,
+          target: target,
+          parent: card.parent
+        });
       } else {
         // move waste back onto the talon
         // last child card in the waste is the first child card in the talon
-        // also need to set `card.faceUp = false`
         while (waste.hasCards) {
           // note this is inverse of previous condition
           let card = getLastCard(waste);
-          let newParent = getLastCard(talon);
+          let target = getLastCard(talon);
 
           card.faceUp = false;
 
           card.parent.child = null;
-          card.parent = newParent;
-          newParent.child = card;
+          card.parent = target;
+          target.child = card;
+
+          // TODO: possible to undo this operation?
         }
       }
     }
