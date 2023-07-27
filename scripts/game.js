@@ -36,6 +36,11 @@ const klondike = e => {
   // so clicking the card doesn't cause it to "jump" to the cursor
   let grabOffset = {x: 0, y: 0};
 
+  // used for custom double-click/tap implementation
+  // this val is set in `onDown` function; if it is called again rapidly
+  // (e.g. within 500ms) then the interaction counts as a double-click
+  let lastOnDownTimestamp = Date.now();
+
   // initialize all places where a card can be placed - https://en.wikipedia.org/wiki/Glossary_of_patience_terms
 
   // "talon" (draw pile)
@@ -295,6 +300,15 @@ const klondike = e => {
   const onDown = e => {
     e.preventDefault();
 
+    let delta = Date.now() - lastOnDownTimestamp;
+    console.log(delta)
+    lastOnDownTimestamp = Date.now();
+
+    if (delta < DOUBLE_CLICK_MS) {
+      onDouble(e);
+      return;
+    }
+
     let point = getCoords(e);
 
     // if player clicks the talon
@@ -490,8 +504,6 @@ const klondike = e => {
 
   // allow double click/tap to auto-play cards
   const onDouble = e => {
-    e.preventDefault();
-
     let point = getCoords(e);
 
     // play directly from the waste pile
@@ -574,8 +586,6 @@ const klondike = e => {
   canvas.addEventListener('touchstart', onDown);
   canvas.addEventListener('touchmove', onMove);
   canvas.addEventListener('touchend', onUp);
-
-  canvas.addEventListener('dblclick', onDouble);
 
   window.addEventListener('keydown', e => {
     // return unless the keypress is meta/contrl + z (for undo)

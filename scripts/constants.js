@@ -68,3 +68,4 @@ const height = 454;
 const cardWidth = 75;
 const cardHeight = 100;
 const overlapOffset = 18;
+const DOUBLE_CLICK_MS = 400;
