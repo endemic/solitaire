@@ -10,6 +10,10 @@ const touchedCard = (point, card) => {
 
 // return the card in a stack of cards that was touched
 const touchedStack = (point, stack) => {
+  if (!stack.child) {
+    return false;
+  }
+
   let card = stack;
 
   do {
@@ -26,6 +30,8 @@ const touchedStack = (point, stack) => {
     // look at the next card
     card = card.child;
   } while (card);
+
+  return false;
 };
 
 // convert global browser coordinates to canvas coordinates
