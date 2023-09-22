@@ -50,8 +50,8 @@ const getCoords = event => {
 
   // this seems to translate to <canvas> coordinates
   return {
-    x: event.x * scale,
-    y: event.y * scale
+    x: event.x - event.target.offsetLeft,
+    y: event.y - event.target.offsetTop
   }
 };
 
