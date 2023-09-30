@@ -18,4 +18,22 @@ class Foundation extends Stack {
     // only draw the top-most card
     context.drawImage(card.image, card.x, card.y);
   }
+
+  validPlay(card) {
+    const target = this.lastCard;
+
+    // no other cards in the foundation, so (any suit) ace is allowed
+    if (!target.parent && card.rank === 'ace') {
+      return true;
+    }
+
+    // if there are cards already played, ensure they are the same suit
+    // and the card rank is one higher than the target
+    if (card.suit === target.suit && rankDiff(card, target) === 1) {
+      return true;
+    }
+
+    return false;
+  };
+
 }

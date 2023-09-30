@@ -201,8 +201,6 @@ const klondike = e => {
         // last child card in the waste is the first child card in the talon
         while (waste.hasCards) {
           // note this is inverse of previous condition
-          // let card = getLastCard(waste);
-          // let target = getLastCard(talon);
           let card = waste.lastCard;
           let target = talon.lastCard;
 
@@ -331,7 +329,7 @@ const klondike = e => {
         let target = f.lastCard;
         let card = grabbed.child;
 
-        valid = validFoundationPlay(card, target)
+        valid = f.validPlay(card);
 
         if (valid) {
           undoStack.push({
@@ -352,7 +350,7 @@ const klondike = e => {
         let target = p.lastCard;
         let card = grabbed.child;
 
-        valid = validPilePlay(card, target);
+        valid = p.validPlay(card);
 
         if (valid) {
           undoStack.push({
@@ -393,12 +391,12 @@ const klondike = e => {
 
     // play directly from the waste pile
     if (touchedCard(point, waste) && waste.hasCards) {
-      let card = getLastCard(waste);
+      let card = waste.lastCard;
 
       // determine if card can be played on one of the foundation stacks
       for (let i = foundations.length - 1; i >= 0; i -= 1) {
         let f = foundations[i];
-        let target = getLastCard(f);
+        let target = f.lastCard;
         let valid = validFoundationPlay(card, target);
 
         if (valid) {
@@ -428,12 +426,12 @@ const klondike = e => {
       // if pile was double-clicked
       if (touchedStack(point, p)) {
         // find the last card on the pile
-        let card = getLastCard(p);
+        let card = p.lastCard;
 
         // determine if that same card can be played on one of the foundation stacks
         for (let i = foundations.length - 1; i >= 0; i -= 1) {
           let f = foundations[i];
-          let target = getLastCard(f);
+          let target = f.lastCard;
           let valid = validFoundationPlay(card, target);
 
           if (valid) {

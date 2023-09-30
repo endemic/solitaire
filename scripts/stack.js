@@ -1,6 +1,4 @@
 class Stack {
-  x = 0;
-  y = 0;
   width = 75;
   height = 100;
   child = null;
@@ -74,23 +72,25 @@ class Stack {
   }
 
   // return the card in a stack of cards that was touched
-touchedStack(point) {
-  if (!this.hasCards) {
-    return false;
-  }
+  // this method is also used for general collision detection
+  // (e.g. if player dropped card[s] over a stack)
+  touchedStack(point) {
+    if (!this.hasCards) {
+      return this.touched(point);
+    }
 
-  let card = this;
-  let offset = 18;
+    let card = this;
+    let offset = 18;
 
-  do {
-    // cards under other cards only have 18px (`overlapOffset`) of touchable space
-    let height = card.child ? offset : card.height;
+    do {
+      // cards under other cards only have 18px (`overlapOffset`) of touchable space
+      let height = card.child ? offset : card.height;
 
-    if (point.x > card.x && point.x < card.x + card.width &&
-        point.y > card.y && point.y < card.y + height &&
-        // only allow face up cards, or face down cards with no cards on top
-        (card.faceUp || !card.child)) {
-        return card;
+      if (point.x > card.x && point.x < card.x + card.width &&
+          point.y > card.y && point.y < card.y + height &&
+          // only allow face up cards, or face down cards with no cards on top
+          (card.faceUp || !card.child)) {
+          return card;
       }
 
     // look at the next card
