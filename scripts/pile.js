@@ -1,4 +1,6 @@
-class Pile extends Stack {
+import Stack from './stack.js';
+
+export default class Pile extends Stack {
   constructor(x, y) {
     super('pile', x, y);
   }

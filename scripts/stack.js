@@ -1,4 +1,4 @@
-class Stack {
+export default class Stack {
   width = 75;
   height = 100;
   child = null;

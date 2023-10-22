@@ -1,4 +1,4 @@
-class Card {
+export default class Card {
   faceUp = false;
   x = 0;
   y = 0;

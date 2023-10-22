@@ -1,3 +1,10 @@
+import Card from './card.js';
+import Stack from './stack.js';
+import Talon from './talon.js';
+import Waste from './waste.js';
+import Foundation from './foundation.js';
+import Pile from './pile.js';
+
 const IMAGES = {};
 let loadedImageCount = 0;
 
@@ -66,7 +73,7 @@ const klondike = e => {
 
   // "talon" (draw pile)
   // placed in the upper left hand corner
-  const talon = new Talon(margin, margin);
+  const talon = new Talon(margin, margin, IMAGES);
 
   // "waste" (play stack)
   // placed relative to the talon
@@ -76,7 +83,7 @@ const klondike = e => {
   // aligned vertically with talon/waste, on right side of tableau
   const foundations = [];
   for (let i = 0; i < 4; i += 1) {
-    foundations.push(new Foundation(width - (cardWidth * (i + 1)) - (margin * (i + 1)), margin));
+    foundations.push(new Foundation(width - (cardWidth * (i + 1)) - (margin * (i + 1)), margin, IMAGES));
   }
 
   // 7 "piles"
@@ -517,3 +524,5 @@ const klondike = e => {
     draw();
   });
 };
+
+export default klondike;

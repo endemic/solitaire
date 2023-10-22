@@ -1,11 +1,15 @@
-class Talon extends Stack {
-  constructor(x, y) {
+import Stack from './stack.js';
+
+export default class Talon extends Stack {
+  constructor(x, y, images) {
     super('talon', x, y);
+
+    this.image = images['backs_target'];
   }
 
   draw(context) {
     if (!this.hasCards) {
-      context.drawImage(IMAGES['backs_target'], this.x, this.y);
+      context.drawImage(this.image, this.x, this.y);
 
       return;
     }
