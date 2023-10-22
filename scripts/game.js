@@ -208,17 +208,34 @@ const klondike = e => {
     // }
 
     let point = getCoords(e);
+    let drawCount = 3;
 
     if (talon.touched(point)) {
       if (talon.hasCards) {
         let card = talon.lastCard;
-        let target = waste.lastCard;
+
+        // reset the number of visible cards in the waste
+        waste.visibleCards = drawCount;
+
+        for (let i = 0; i < drawCount - 1; i += 1) {
+          card.faceUp = true;
+
+          // if fewer than `drawCount` cards in talon,
+          // then only show remaining cards
+          if (!card.parent) {
+            break;
+          }
+
+          card = card.parent;
+        }
 
         card.faceUp = true;
 
         // TODO: perhaps extract this kinda weird logic?
         // break from the previous "parent" card
         card.parent.child = null;
+
+        let target = waste.lastCard;
 
         // set the new parent
         card.parent = target;
@@ -232,6 +249,7 @@ const klondike = e => {
       } else {
         // move waste back onto the talon
         // last child card in the waste is the first child card in the talon
+        // TODO: move this logic into `Waste` class
         while (waste.hasCards) {
           // note this is inverse of previous condition
           let card = waste.lastCard;
@@ -255,6 +273,8 @@ const klondike = e => {
       // "grab" the top-most card
       let card = waste.lastCard;
 
+      // TODO: extract this logic that picks up a card (stack)
+
       // remove card from "waste" list
       card.parent.child = null;
 
@@ -267,6 +287,12 @@ const klondike = e => {
       // move the card along with the touch/cursor
       grabbed.x = point.x - grabOffset.x;
       grabbed.y = point.y - grabOffset.y;
+
+      // TODO: think of a better solution than a "global" boolean
+      if (waste.visibleCards > 1) {
+        waste.visibleCards -= 1;
+        this.grabbedWaste = true;
+      }
     }
 
     // allow player to pick cards back up off the foundations if needed
@@ -324,13 +350,17 @@ const klondike = e => {
       }
     });
 
+<<<<<<< HEAD
     // update canvas
+=======
+>>>>>>> bc75ccc (WIP 3 card draw implementation)
     draw();
   };
 
   const onMove = e => {
     e.preventDefault();
 
+    // only need to update the canvas if the player is moving cards
     if (!grabbed.hasCards) {
       return;
     }
@@ -347,6 +377,7 @@ const klondike = e => {
   const onUp = e => {
     e.preventDefault();
 
+<<<<<<< HEAD
     if (interval) {
       window.clearInterval(interval);
       interval = null;
@@ -356,10 +387,14 @@ const klondike = e => {
 
     let point = getCoords(e);
 
+=======
+>>>>>>> bc75ccc (WIP 3 card draw implementation)
     // if not holding a card, then there's nothing to do
     if (!grabbed.hasCards) {
       return;
     }
+
+    let point = getCoords(e);
 
     canvas.style.cursor = 'grab';
 
@@ -416,8 +451,17 @@ const klondike = e => {
       // we do this by re-establishing the link from the parent -> child,
       // so the parent object (waste, pile, etc.) will have a link to the child again
       let card = grabbed.child;
+      let parent = card.parent;
 
-      card.parent.child = card;
+      parent.child = card;
+
+      // if player took a card from the waste and didn't play it,
+      // we need to put it back with the correct number of visible cards
+      if (this.grabbedWaste) {
+        this.grabbedWaste = false;
+
+        waste.visibleCards += 1;
+      }
     }
 
     // "release" reference to card
