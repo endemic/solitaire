@@ -93,11 +93,10 @@ class Stack {
           return card;
       }
 
-    // look at the next card
-    card = card.child;
-  } while (card);
+      // look at the next card
+      card = card.child;
+    } while (card);
 
-  return false;
-};
-
+    return false;
+  }
 }

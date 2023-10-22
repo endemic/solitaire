@@ -263,6 +263,8 @@ const klondike = e => {
       let card = p.touchedStack(point);
 
       // if player touched a card
+      // TODO: require one click to turn the card over first?
+      // verify that behavior in original game
       if (card) {
         canvas.style.cursor = 'grabbing';
 

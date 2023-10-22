@@ -14,7 +14,7 @@ class Pile extends Stack {
     // if there are cards already played, ensure they are alternating suits
     // and the card rank is one lower than the target
     // (and the target has to be face up, too)
-    if (colorDiff(card, target) && rankDiff(card, target) === -1 && target.faceUp) {
+    if (card.color !== target.color && card.diff(target) === -1 && target.faceUp) {
       return true;
     }
 

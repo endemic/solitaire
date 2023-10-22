@@ -20,13 +20,3 @@ const getCoords = event => {
     y: event.y - event.target.offsetTop
   }
 };
-
-// returns a - b; e.g. 5 - 2 = 3
-// used to ensure sequential card placement
-const rankDiff = (a, b) => RANKS.indexOf(a.rank) - RANKS.indexOf(b.rank);
-
-// returns true if (a, b) have different colors
-const colorDiff = (a, b) => {
-  return (['hearts', 'diamonds'].indexOf(a.suit) > -1 && ['clubs', 'spades'].indexOf(b.suit) > -1) ||
-  (['hearts', 'diamonds'].indexOf(b.suit) > -1 && ['clubs', 'spades'].indexOf(a.suit) > -1);
-}
