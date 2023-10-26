@@ -1,3 +1,10 @@
+import Card from './card.js';
+import Stack from './stack.js';
+import Talon from './talon.js';
+import Waste from './waste.js';
+import Foundation from './foundation.js';
+import Pile from './pile.js';
+
 const IMAGES = {};
 let loadedImageCount = 0;
 
@@ -12,6 +19,27 @@ const onImageLoad = e => {
     klondike();
   }
 }
+
+// convert global browser coordinates to canvas coordinates
+const getCoords = event => {
+  // need to scale the touches by the actual size of the canvas;
+  // e.g. the canvas still thinks it is 605px wide even if it is
+  // scaled to 400px by CSS rules
+  const scale = event.target.width / event.target.clientWidth;
+
+  if (event.changedTouches && event.changedTouches.length > 0) {
+    return {
+      x: event.changedTouches[0].clientX * scale,
+      y: event.changedTouches[0].clientY * scale
+    };
+  }
+
+  // this seems to translate to <canvas> coordinates
+  return {
+    x: event.x - event.target.offsetLeft,
+    y: event.y - event.target.offsetTop
+  }
+};
 
 // enumerate over image sources, and load them into memory
 IMG_SRC.forEach(src => {
@@ -30,11 +58,11 @@ const klondike = e => {
   const undoStack = [];
 
   // var to hold reference to grabbed card(s)
-  let grabbed = null;
+  const grabbed = new Stack('grabbed', 0, 0);
 
   // record the cursor offset where the card was picked up,
   // so clicking the card doesn't cause it to "jump" to the cursor
-  let grabOffset = {x: 0, y: 0};
+  const grabOffset = {x: 0, y: 0};
 
   // used for custom double-click/tap implementation
   // this val is set in `onDown` function; if it is called again rapidly
@@ -45,47 +73,25 @@ const klondike = e => {
 
   // "talon" (draw pile)
   // placed in the upper left hand corner
-  let talon = new Stack('talon', margin, margin);
+  const talon = new Talon(margin, margin, IMAGES);
 
   // "waste" (play stack)
   // placed relative to the talon
-  let waste = new Stack('waste', talon.x + cardWidth + margin, talon.y);
+  const waste = new Waste(talon.x + cardWidth + margin, talon.y);
 
   // 4 "foundations"
   // aligned vertically with talon/waste, on right side of tableau
-  let foundations = [];
+  const foundations = [];
   for (let i = 0; i < 4; i += 1) {
-    foundations.push(new Stack('foundation', width - (cardWidth * (i + 1)) - (margin * (i + 1)), margin));
+    foundations.push(new Foundation(width - (cardWidth * (i + 1)) - (margin * (i + 1)), margin, IMAGES));
   }
 
   // 7 "piles"
   // spans the width of the tableau, under the talon/waste/foundations
-  let piles = [];
+  const piles = [];
   for (let i = 0; i < 7; i += 1) {
-    piles.push(new Stack('pile', cardWidth * i + (margin * (i + 1)), cardHeight + margin * 2));
+    piles.push(new Pile(cardWidth * i + (margin * (i + 1)), cardHeight + margin * 2));
   }
-
-  // given a "card" object with properties {x, y, child},
-  // draw the card and all the cards under it
-  const drawCardStack = (card, x, y) => {
-    card.x = x;
-    card.y = y;
-
-    context.drawImage(card.image, card.x, card.y);
-
-    let offset = overlapOffset;
-
-    // if cards in play piles are still face down, draw them closer together
-    if (!card.faceUp) {
-      // TODO: extract this magic number
-      offset = 3;
-    }
-
-    if (card.child) {
-      drawCardStack(card.child, x, y + offset);
-    }
-  };
-
 
   // initialize deck
   const DECK = [];
@@ -123,7 +129,7 @@ const klondike = e => {
   for (let i = 0; i < Math.pow(piles.length, 2); i += 1) {
     let j = i % piles.length;
 
-    let lastCard = getLastCard(piles[j]);
+    let lastCard = piles[j].lastCard;
 
     if (lastCard.faceUp) {
       continue;
@@ -143,137 +149,24 @@ const klondike = e => {
   // put the rest of the cards in the talon
   while (DECK.length) {
     let card = DECK.pop();
-    let parent = getLastCard(talon);
+    let parent = talon.lastCard;
 
     parent.child = card;
     card.parent = parent;
   }
 
-  // TODO: probably change this function name to `draw`
-  const update = () => {
+  const draw = () => {
     // clear previous contents
     context.clearRect(0, 0, width, height);
 
     // draw card piles
-    drawTalon();
-    drawWaste();
-    foundations.forEach(f => drawFoundation(f));
-    piles.forEach(p => drawPile(p));
+    talon.draw(context);
+    waste.draw(context);
+    foundations.forEach(f => f.draw(context));
+    piles.forEach(p => p.draw(context));
 
     // draw any cards currently being moved by player
-    drawGrabbed();
-  };
-
-  const drawTalon = () => {
-    if (!talon.hasCards) {
-      context.drawImage(IMAGES['backs_target'], talon.x, talon.y);
-
-      return;
-    }
-
-    let card = talon.child;
-    let drawnCards = 0;
-    let cardCount = 0;
-    let offset = {x: 0, y: 0};
-
-    while (card) {
-      // go thru list of cards; for each 8, draw the next one at an offset
-      if (Math.floor(cardCount / 8) === drawnCards) {
-        drawnCards += 1;
-
-        // ensure card has correct coordinates
-        card.x = talon.x + offset.x;
-        card.y = talon.y + offset.y;
-
-        context.drawImage(card.image, card.x, card.y);
-
-        // update offset for next card
-        offset.x += 2;
-        offset.y += 1;
-      }
-
-      cardCount += 1;
-      card = card.child;
-    }
-  };
-
-  const drawWaste = () => {
-    if (!waste.hasCards) {
-      context.drawImage(IMAGES['backs_target'], waste.x, waste.y);
-
-      return;
-    }
-
-    let card = waste.child;
-    let drawnCards = 0;
-    let cardCount = 0;
-    let offset = {x: 0, y: 0};
-
-    while (card) {
-      // ensure each card has correct coordinates
-      card.x = waste.x + offset.x;
-      card.y = waste.y + offset.y;
-
-      // go thru list of cards; for each 8, draw the next one at an offset
-      if (Math.floor(cardCount / 8) > drawnCards) {
-        drawnCards += 1;
-
-        context.drawImage(card.image, card.x, card.y);
-
-        // update offset for next card
-        offset.x += 2;
-        offset.y += 1;
-      }
-
-      // ensure the last card on the stack is drawn
-      if (!card.child) {
-        context.drawImage(card.image, card.x, card.y);
-      }
-
-      cardCount += 1;
-      card = card.child;
-    }
-  };
-
-  const drawFoundation = f => {
-    if (!f.hasCards) {
-      context.drawImage(IMAGES['backs_target'], f.x, f.y);
-
-      return;
-    }
-
-    let card = getLastCard(f);
-
-    card.x = f.x;
-    card.y = f.y;
-
-    // only draw the top-most card
-    context.drawImage(card.image, card.x, card.y);
-  };
-
-  const drawPile = p => {
-    if (!p.hasCards) {
-      context.drawImage(IMAGES['backs_target'], p.x, p.y);
-
-      return;
-    }
-
-    let card = p.child;
-
-    card.x = p.x;
-    card.y = p.y
-
-    drawCardStack(card, card.x, card.y);
-  };
-
-  const drawGrabbed = () => {
-    if (!grabbed) {
-      return;
-    }
-
-    // position of top grabbed card is updated in the `onMove` handler
-
-    drawCardStack(grabbed, grabbed.x, grabbed.y);
+    grabbed.draw(context);
   };
 
   const checkWin = () => {
@@ -294,28 +187,27 @@ const klondike = e => {
   };
 
   // initial draw
-  update();
+  draw();
 
   // Event handlers
   const onDown = e => {
     e.preventDefault();
 
-    let delta = Date.now() - lastOnDownTimestamp;
-    console.log(delta)
-    lastOnDownTimestamp = Date.now();
+    // let delta = Date.now() - lastOnDownTimestamp;
+    // console.log(delta)
+    // lastOnDownTimestamp = Date.now();
 
-    if (delta < DOUBLE_CLICK_MS) {
-      onDouble(e);
-      return;
-    }
+    // if (delta < DOUBLE_CLICK_MS) {
+    //   onDouble(e);
+    //   return;
+    // }
 
     let point = getCoords(e);
 
-    // if player clicks the talon
-    if (touchedCard(point, talon)) {
+    if (talon.touched(point)) {
       if (talon.hasCards) {
-        let card = getLastCard(talon);
-        let target = getLastCard(waste);
+        let card = talon.lastCard;
+        let target = waste.lastCard;
 
         card.faceUp = true;
 
@@ -337,8 +229,8 @@ const klondike = e => {
         // last child card in the waste is the first child card in the talon
         while (waste.hasCards) {
           // note this is inverse of previous condition
-          let card = getLastCard(waste);
-          let target = getLastCard(talon);
+          let card = waste.lastCard;
+          let target = talon.lastCard;
 
           card.faceUp = false;
 
@@ -352,41 +244,55 @@ const klondike = e => {
     }
 
     // if player clicks the waste pile
-    // "grab" the top-most card
-    if (touchedCard(point, waste) && waste.hasCards) {
+    if (waste.touched(point) && waste.hasCards) {
       canvas.style.cursor = 'grabbing';
 
-      grabbed = getLastCard(waste);
+      // "grab" the top-most card
+      let card = waste.lastCard;
 
       // remove card from "waste" list
-      grabbed.parent.child = null;
+      card.parent.child = null;
 
-      grabOffset = {
-        x: point.x - grabbed.x,
-        y: point.y - grabbed.y
-      };
+      // add to stack which player is "holding"
+      grabbed.child = card;
+
+      grabOffset.x = point.x - card.x;
+      grabOffset.y = point.y - card.y;
+
+      // move the card along with the touch/cursor
+      grabbed.x = point.x - grabOffset.x;
+      grabbed.y = point.y - grabOffset.y;
     }
 
     // allow player to pick cards back up off the foundations if needed
     foundations.forEach(f => {
-      if (touchedCard(point, f) && f.hasCards) {
-        grabbed = getLastCard(f);
+      if (f.touched(point) && f.hasCards) {
+        canvas.style.cursor = 'grabbing';
+
+        let card = f.lastCard;
 
         // remove card from "foundation" list
-        grabbed.parent.child = null;
+        card.parent.child = null;
 
-        grabOffset = {
-          x: point.x - grabbed.x,
-          y: point.y - grabbed.y
-        };
+        // add to stack which player is "holding"
+        grabbed.child = card;
+
+        grabOffset.x = point.x - card.x;
+        grabOffset.y = point.y - card.y;
+
+        // move the card along with the touch/cursor
+        grabbed.x = point.x - grabOffset.x;
+        grabbed.y = point.y - grabOffset.y;
       }
     });
 
     // check for picking up cards on play piles
     piles.forEach(p => {
-      let card = touchedStack(point, p);
+      let card = p.touchedStack(point);
 
       // if player touched a card
+      // TODO: require one click to turn the card over first?
+      // verify that behavior in original game
       if (card) {
         canvas.style.cursor = 'grabbing';
 
@@ -394,27 +300,30 @@ const klondike = e => {
           card.faceUp = true;
         }
 
-        grabbed = card;
-
         // break the parent -> child connection so the card(s) are no longer drawn at the source
         // but keep the parent <- child connection until card(s) are dropped
-        grabbed.parent.child = null;
+        card.parent.child = null;
 
-        grabOffset = {
-          x: point.x - grabbed.x,
-          y: point.y - grabbed.y
-        };
+        // add to stack which player is "holding"
+        grabbed.child = card;
+
+        grabOffset.x = point.x - card.x;
+        grabOffset.y = point.y - card.y;
+
+        // move the card along with the touch/cursor
+        grabbed.x = point.x - grabOffset.x;
+        grabbed.y = point.y - grabOffset.y;
       }
     });
 
     // this should really be called `draw`
-    update();
+    draw();
   };
 
   const onMove = e => {
     e.preventDefault();
 
-    if (!grabbed) {
+    if (!grabbed.hasCards) {
       return;
     }
 
@@ -424,7 +333,7 @@ const klondike = e => {
     grabbed.x = x - grabOffset.x;
     grabbed.y = y - grabOffset.y;
 
-    update();
+    draw();
   };
 
   const onUp = e => {
@@ -433,7 +342,7 @@ const klondike = e => {
     let point = getCoords(e);
 
     // if not holding a card, then there's nothing to do
-    if (!grabbed) {
+    if (!grabbed.hasCards) {
       return;
     }
 
@@ -446,40 +355,42 @@ const klondike = e => {
 
     // check to see if card can be played on foundations
     foundations.forEach(f => {
-      if (touchedCard(point, f)) {
-        let target = getLastCard(f);
+      if (f.touched(point)) {
+        let target = f.lastCard;
+        let card = grabbed.child;
 
-        valid = validFoundationPlay(grabbed, target)
+        valid = f.validPlay(card);
 
         if (valid) {
           undoStack.push({
-            card: grabbed,
-            target: target,
-            parent: grabbed.parent
+            card,
+            target,
+            parent: card.parent
           });
 
-          target.child = grabbed;
-          grabbed.parent = target;
+          target.child = card;
+          card.parent = target;
         }
       }
     });
 
     // check to see if card can be played on piles
     piles.forEach(p => {
-      if (touchedStack(point, p)) {
-        let target = getLastCard(p);
+      if (p.touchedStack(point)) {
+        let target = p.lastCard;
+        let card = grabbed.child;
 
-        valid = validPilePlay(grabbed, target);
+        valid = p.validPlay(card);
 
         if (valid) {
           undoStack.push({
-            card: grabbed,
-            target: target,
-            parent: grabbed.parent
+            card,
+            target,
+            parent: card.parent
           });
 
-          target.child = grabbed;
-          grabbed.parent = target;
+          target.child = card;
+          card.parent = target;
         }
       }
     });
@@ -489,13 +400,15 @@ const klondike = e => {
       // put the card back where it was
       // we do this by re-establishing the link from the parent -> child,
       // so the parent object (waste, pile, etc.) will have a link to the child again
-      grabbed.parent.child = grabbed;
+      let card = grabbed.child;
+
+      card.parent.child = card;
     }
 
     // "release" reference to card
-    grabbed = null;
+    grabbed.child = null;
 
-    update();
+    draw();
 
     if (checkWin()) {
       interval = fallingCards(canvas, foundations);
@@ -508,12 +421,12 @@ const klondike = e => {
 
     // play directly from the waste pile
     if (touchedCard(point, waste) && waste.hasCards) {
-      let card = getLastCard(waste);
+      let card = waste.lastCard;
 
       // determine if card can be played on one of the foundation stacks
       for (let i = foundations.length - 1; i >= 0; i -= 1) {
         let f = foundations[i];
-        let target = getLastCard(f);
+        let target = f.lastCard;
         let valid = validFoundationPlay(card, target);
 
         if (valid) {
@@ -543,12 +456,12 @@ const klondike = e => {
       // if pile was double-clicked
       if (touchedStack(point, p)) {
         // find the last card on the pile
-        let card = getLastCard(p);
+        let card = p.lastCard;
 
         // determine if that same card can be played on one of the foundation stacks
         for (let i = foundations.length - 1; i >= 0; i -= 1) {
           let f = foundations[i];
-          let target = getLastCard(f);
+          let target = f.lastCard;
           let valid = validFoundationPlay(card, target);
 
           if (valid) {
@@ -572,7 +485,7 @@ const klondike = e => {
       }
     }
 
-    update();
+    draw();
 
     if (checkWin()) {
       interval = fallingCards(canvas, foundations);
@@ -608,6 +521,8 @@ const klondike = e => {
     card.parent = parent;
     parent.child = card;
 
-    update();
+    draw();
   });
 };
+
+export default klondike;

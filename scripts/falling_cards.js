@@ -28,7 +28,7 @@ const fallingCards = (canvas, foundations) => {
     // TODO: ensure that each foundation is picked fairly equally
     let f = foundations[Math.floor(Math.random() * foundations.length)];
 
-    let card = getLastCard(f);
+    let card = f.lastCard;
 
     // detatch card
     card.parent.child = null;
