@@ -69,6 +69,9 @@ const klondike = e => {
   // (e.g. within 500ms) then the interaction counts as a double-click
   let lastOnDownTimestamp = Date.now();
 
+  // stores reference to falling cards animation
+  let interval;
+
   // initialize all places where a card can be placed - https://en.wikipedia.org/wiki/Glossary_of_patience_terms
 
   // "talon" (draw pile)
@@ -162,7 +165,7 @@ const klondike = e => {
 
   const draw = () => {
     // clear previous contents
-    // context.clearRect(0, 0, width, height);
+    context.clearRect(0, 0, canvas.width, canvas.height);
 
     // draw card piles
     talon.draw(context);
@@ -190,9 +193,6 @@ const klondike = e => {
       return count === 13;
     });
   };
-
-  // initial draw
-  draw();
 
   // Event handlers
   const onDown = e => {
@@ -497,7 +497,7 @@ const klondike = e => {
     }
   };
 
-  const onResize = e => {
+  const onResize = () => {
     let windowWidth = window.innerWidth;
     let windowHeight = window.innerHeight;
     let aspectRatio = 4 / 3;
@@ -528,7 +528,7 @@ const klondike = e => {
     let cardMargin = (8 / 605) * tableauWidth;
     let cardOffset = cardMargin * 2;
 
-    let cardWidth = (75 / 605) * tableauWidth;
+    let cardWidth = (77.25 / 605) * tableauWidth;
     let cardHeight = (100 / 454) * tableauHeight;
 
     // console.log(windowWidth, windowHeight, tableauWidth, tableauHeight, margin, cardOffset, cardWidth, cardHeight);
@@ -558,7 +558,7 @@ const klondike = e => {
     waste.y = talon.y;
 
     foundations.forEach((f, i) => {
-      f.x = (windowWidth - windowMargin) - (cardWidth * (i + 1)) - (cardMargin * (i + 1));
+      f.x = (windowWidth - windowMargin) - ((cardWidth + cardMargin) * (i + 1));
       f.y = cardMargin;
     });
 
@@ -568,9 +568,9 @@ const klondike = e => {
     });
 
     // debug
-    let ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'red';
-    ctx.fillRect(windowMargin, 0, tableauWidth, tableauHeight);
+    // let ctx = canvas.getContext('2d');
+    // ctx.fillStyle = 'red';
+    // ctx.fillRect(windowMargin, 0, tableauWidth, tableauHeight);
 
     draw();
   };

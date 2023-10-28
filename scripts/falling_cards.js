@@ -48,7 +48,7 @@ const fallingCards = (canvas, foundations) => {
       movingCard = getNextFallingCard();
     }
 
-    context.drawImage(movingCard.image, movingCard.x, movingCard.y);
+    context.drawImage(movingCard.image, movingCard.x, movingCard.y, movingCard.width, movingCard.height);
 
     // determine next position
     movingCard.x += movingCard.velocity.x;
