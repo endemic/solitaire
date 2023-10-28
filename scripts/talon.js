@@ -9,7 +9,7 @@ export default class Talon extends Stack {
 
   draw(context) {
     if (!this.hasCards) {
-      context.drawImage(this.image, this.x, this.y);
+      context.drawImage(this.image, this.x, this.y, this.width, this.height);
 
       return;
     }
@@ -28,7 +28,7 @@ export default class Talon extends Stack {
         card.x = this.x + offset.x;
         card.y = this.y + offset.y;
 
-        context.drawImage(card.image, card.x, card.y);
+        context.drawImage(card.image, card.x, card.y, card.width, card.height);
 
         // update offset for next card
         // TODO: extract these magic numbers

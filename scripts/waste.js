@@ -7,8 +7,6 @@ export default class Waste extends Stack {
 
   draw(context) {
     if (!this.hasCards) {
-      // context.drawImage(IMAGES['backs_target'], this.x, this.y);
-
       return;
     }
 
@@ -26,16 +24,17 @@ export default class Waste extends Stack {
       if (Math.floor(count / 8) > drawnCards) {
         drawnCards += 1;
 
-        context.drawImage(card.image, card.x, card.y);
+        context.drawImage(card.image, card.x, card.y, card.width, card.height);
 
         // update offset for next card
+        // TODO: extract these magic numbers
         offset.x += 2;
         offset.y += 1;
       }
 
       // ensure the last card on the stack is drawn
       if (!card.child) {
-        context.drawImage(card.image, card.x, card.y);
+        context.drawImage(card.image, card.x, card.y, card.width, card.height);
       }
 
       count += 1;
