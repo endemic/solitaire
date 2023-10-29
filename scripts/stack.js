@@ -1,7 +1,4 @@
 export default class Stack {
-  width = 75;
-  height = 100;
-  offset = 18;
   child = null;
 
   constructor(type, x, y) {
@@ -50,14 +47,8 @@ export default class Stack {
 
       context.drawImage(card.image, card.x, card.y, card.width, card.height);
 
-      // TODO: extract this magic number; previously `overlapOffset`
-      let offset = this.offset;
-
       // if cards in play piles are still face down, draw them closer together
-      if (!card.faceUp) {
-        // TODO: extract this magic number
-        offset = 3;
-      }
+      let offset = card.faceUp ? this.cardOffset : this.cardOffset / 4;
 
       // set up for next card (if necessary)
       y = y + offset;
@@ -81,11 +72,10 @@ export default class Stack {
     }
 
     let card = this;
-    let offset = card.offset || 18;
 
     do {
-      // cards under other cards only have 18px (`overlapOffset`) of touchable space
-      let height = card.child ? offset : card.height;
+      // cards under other cards only have `cardOffset` of touchable space
+      let height = card.child ? this.cardOffset : card.height;
 
       if (point.x > card.x && point.x < card.x + card.width &&
           point.y > card.y && point.y < card.y + height &&

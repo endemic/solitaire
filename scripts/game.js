@@ -303,6 +303,9 @@ const klondike = e => {
 
         if (!card.faceUp) {
           card.faceUp = true;
+
+          // TODO: don't allow the same click to both turn over _and_ grab card
+          return;
         }
 
         // break the parent -> child connection so the card(s) are no longer drawn at the source
@@ -321,7 +324,7 @@ const klondike = e => {
       }
     });
 
-    // this should really be called `draw`
+    // update canvas
     draw();
   };
 
@@ -343,6 +346,13 @@ const klondike = e => {
 
   const onUp = e => {
     e.preventDefault();
+
+    if (interval) {
+      window.clearInterval(interval);
+      interval = null;
+
+      // TODO: reset game
+    }
 
     let point = getCoords(e);
 
@@ -526,29 +536,28 @@ const klondike = e => {
 
     // tweak these values as necessary
     let cardMargin = (8 / 605) * tableauWidth;
-    let cardOffset = cardMargin * 2;
+    let cardOffset = cardMargin * 2.5;
 
     let cardWidth = (77.25 / 605) * tableauWidth;
     let cardHeight = (100 / 454) * tableauHeight;
 
-    // console.log(windowWidth, windowHeight, tableauWidth, tableauHeight, margin, cardOffset, cardWidth, cardHeight);
-
     // enumerate over all cards/stacks in order to set their width/height
-    for (let group of [talon, waste, foundations, piles, cards]) {
+    for (let group of [grabbed, talon, waste, foundations, piles, cards]) {
       if (Array.isArray(group)) {
         for (let item of group) {
           item.width = cardWidth;
           item.height = cardHeight;
-
-          if (item.offset) {
-            item.offset = cardOffset;
-          }
+          item.cardOffset = cardOffset;
         }
       } else {
         group.width = cardWidth;
         group.height = cardHeight;
+        group.cardOffset = cardOffset;
       }
     }
+
+    // TODO: option to invert orientation of tableau;
+    // talon/waste on right side, foundations on left side
 
     // update positions of talon, waste, foundations, and piles
     talon.x = windowMargin + cardMargin;
@@ -572,7 +581,10 @@ const klondike = e => {
     // ctx.fillStyle = 'red';
     // ctx.fillRect(windowMargin, 0, tableauWidth, tableauHeight);
 
-    draw();
+    if (!interval) {
+      // update screen if not displaying card waterfall
+      draw();
+    }
   };
 
   // initial draw/resize
