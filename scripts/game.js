@@ -558,23 +558,43 @@ const klondike = e => {
 
     // TODO: option to invert orientation of tableau;
     // talon/waste on right side, foundations on left side
+    let mirror = true;
 
     // update positions of talon, waste, foundations, and piles
-    talon.x = windowMargin + cardMargin;
-    talon.y = cardMargin;
+    if (mirror) {
+      talon.x = windowWidth - windowMargin - cardMargin - cardWidth;
+      talon.y = cardMargin;
 
-    waste.x = talon.x + cardMargin + cardWidth;
-    waste.y = talon.y;
+      waste.x = talon.x - cardMargin - cardWidth;
+      waste.y = talon.y;
 
-    foundations.forEach((f, i) => {
-      f.x = (windowWidth - windowMargin) - ((cardWidth + cardMargin) * (i + 1));
-      f.y = cardMargin;
-    });
+      foundations.forEach((f, i) => {
+        f.x = windowMargin + cardMargin + (cardWidth + cardMargin) * i;
+        f.y = cardMargin;
+      });
 
-    piles.forEach((p, i) => {
-      p.x = cardWidth * i + (cardMargin * i) + talon.x;
-      p.y = cardHeight + cardMargin * 2;
-    });
+      piles.forEach((p, i) => {
+        p.x = talon.x - (cardWidth + cardMargin) * i;
+        p.y = cardHeight + cardMargin * 2;
+      });
+    } else {
+      talon.x = windowMargin + cardMargin;
+      talon.y = cardMargin;
+
+      waste.x = talon.x + cardMargin + cardWidth;
+      waste.y = talon.y;
+
+      foundations.forEach((f, i) => {
+        f.x = (windowWidth - windowMargin) - ((cardWidth + cardMargin) * (i + 1));
+        f.y = cardMargin;
+      });
+
+      piles.forEach((p, i) => {
+        p.x = (cardWidth + cardMargin) * i + talon.x;
+        p.y = cardHeight + (cardMargin * 2);
+      });
+    }
+
 
     // debug
     // let ctx = canvas.getContext('2d');

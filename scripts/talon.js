@@ -31,8 +31,8 @@ export default class Talon extends Stack {
         context.drawImage(card.image, card.x, card.y, card.width, card.height);
 
         // update offset for next card
-        offset.x += this.cardOffset / 7;
-        offset.y += this.cardOffset / 10;
+        offset.x += this.cardOffset / 8;
+        offset.y += this.cardOffset / 12;
       }
 
       count += 1;
