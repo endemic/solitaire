@@ -69,36 +69,44 @@ const klondike = e => {
   // (e.g. within 500ms) then the interaction counts as a double-click
   let lastOnDownTimestamp = Date.now();
 
+  // stores reference to falling cards animation
+  let interval;
+
   // initialize all places where a card can be placed - https://en.wikipedia.org/wiki/Glossary_of_patience_terms
 
   // "talon" (draw pile)
   // placed in the upper left hand corner
-  const talon = new Talon(margin, margin, IMAGES);
+  const talon = new Talon(0, 0, IMAGES);
 
   // "waste" (play stack)
   // placed relative to the talon
-  const waste = new Waste(talon.x + cardWidth + margin, talon.y);
+  const waste = new Waste(0, 0);
 
   // 4 "foundations"
   // aligned vertically with talon/waste, on right side of tableau
   const foundations = [];
   for (let i = 0; i < 4; i += 1) {
-    foundations.push(new Foundation(width - (cardWidth * (i + 1)) - (margin * (i + 1)), margin, IMAGES));
+    foundations.push(new Foundation(0, 0, IMAGES));
   }
 
   // 7 "piles"
   // spans the width of the tableau, under the talon/waste/foundations
   const piles = [];
   for (let i = 0; i < 7; i += 1) {
-    piles.push(new Pile(cardWidth * i + (margin * (i + 1)), cardHeight + margin * 2));
+    piles.push(new Pile(0, 0));
   }
 
   // initialize deck
   const DECK = [];
 
+  // list of cards, to enumerate when changing sizes
+  const cards = [];
+
   SUITS.forEach(suit => {
     RANKS.forEach(rank => {
-      DECK.push(new Card(rank, suit, IMAGES));
+      const card = new Card(rank, suit, IMAGES);
+      DECK.push(card);
+      cards.push(card);
     });
   });
 
@@ -157,7 +165,7 @@ const klondike = e => {
 
   const draw = () => {
     // clear previous contents
-    context.clearRect(0, 0, width, height);
+    context.clearRect(0, 0, canvas.width, canvas.height);
 
     // draw card piles
     talon.draw(context);
@@ -185,9 +193,6 @@ const klondike = e => {
       return count === 13;
     });
   };
-
-  // initial draw
-  draw();
 
   // Event handlers
   const onDown = e => {
@@ -298,6 +303,9 @@ const klondike = e => {
 
         if (!card.faceUp) {
           card.faceUp = true;
+
+          // TODO: don't allow the same click to both turn over _and_ grab card
+          return;
         }
 
         // break the parent -> child connection so the card(s) are no longer drawn at the source
@@ -316,7 +324,7 @@ const klondike = e => {
       }
     });
 
-    // this should really be called `draw`
+    // update canvas
     draw();
   };
 
@@ -338,6 +346,13 @@ const klondike = e => {
 
   const onUp = e => {
     e.preventDefault();
+
+    if (interval) {
+      window.clearInterval(interval);
+      interval = null;
+
+      // TODO: reset game
+    }
 
     let point = getCoords(e);
 
@@ -492,6 +507,109 @@ const klondike = e => {
     }
   };
 
+  const onResize = () => {
+    let windowWidth = window.innerWidth;
+    let windowHeight = window.innerHeight;
+    let aspectRatio = 4 / 3;
+    let canvas = document.querySelector('#game');
+
+    // canvas is as large as the window;
+    // cards will be placed in a subset of this area
+    canvas.width = windowWidth;
+    canvas.height = windowHeight;
+
+    // playable area, where cards will be drawn
+    let tableauWidth;
+    let tableauHeight;
+
+    if (windowWidth / windowHeight > aspectRatio) {
+      // wider than it is tall; use the window height to calculate tableau width
+      tableauWidth = windowHeight * aspectRatio;
+      tableauHeight = windowHeight;
+    } else {
+      // taller than it is wide; use window width to calculate tableau height
+      tableauHeight = windowWidth / aspectRatio;
+      tableauWidth = windowWidth;
+    }
+
+    let windowMargin = (windowWidth - tableauWidth) / 2;
+
+    // tweak these values as necessary
+    let cardMargin = (8 / 605) * tableauWidth;
+    let cardOffset = cardMargin * 2.5;
+
+    let cardWidth = (77.25 / 605) * tableauWidth;
+    let cardHeight = (100 / 454) * tableauHeight;
+
+    // enumerate over all cards/stacks in order to set their width/height
+    for (let group of [grabbed, talon, waste, foundations, piles, cards]) {
+      if (Array.isArray(group)) {
+        for (let item of group) {
+          item.width = cardWidth;
+          item.height = cardHeight;
+          item.cardOffset = cardOffset;
+        }
+      } else {
+        group.width = cardWidth;
+        group.height = cardHeight;
+        group.cardOffset = cardOffset;
+      }
+    }
+
+    // TODO: option to invert orientation of tableau;
+    // talon/waste on right side, foundations on left side
+    let mirror = true;
+
+    // update positions of talon, waste, foundations, and piles
+    if (mirror) {
+      talon.x = windowWidth - windowMargin - cardMargin - cardWidth;
+      talon.y = cardMargin;
+
+      waste.x = talon.x - cardMargin - cardWidth;
+      waste.y = talon.y;
+
+      foundations.forEach((f, i) => {
+        f.x = windowMargin + cardMargin + (cardWidth + cardMargin) * i;
+        f.y = cardMargin;
+      });
+
+      piles.forEach((p, i) => {
+        p.x = talon.x - (cardWidth + cardMargin) * i;
+        p.y = cardHeight + cardMargin * 2;
+      });
+    } else {
+      talon.x = windowMargin + cardMargin;
+      talon.y = cardMargin;
+
+      waste.x = talon.x + cardMargin + cardWidth;
+      waste.y = talon.y;
+
+      foundations.forEach((f, i) => {
+        f.x = (windowWidth - windowMargin) - ((cardWidth + cardMargin) * (i + 1));
+        f.y = cardMargin;
+      });
+
+      piles.forEach((p, i) => {
+        p.x = (cardWidth + cardMargin) * i + talon.x;
+        p.y = cardHeight + (cardMargin * 2);
+      });
+    }
+
+
+    // debug
+    // let ctx = canvas.getContext('2d');
+    // ctx.fillStyle = 'red';
+    // ctx.fillRect(windowMargin, 0, tableauWidth, tableauHeight);
+
+    if (!interval) {
+      // update screen if not displaying card waterfall
+      draw();
+    }
+  };
+
+  // initial draw/resize
+  onResize();
+
   canvas.addEventListener('mousedown', onDown);
   canvas.addEventListener('mousemove', onMove);
   canvas.addEventListener('mouseup', onUp);
@@ -499,6 +617,8 @@ const klondike = e => {
   canvas.addEventListener('touchstart', onDown);
   canvas.addEventListener('touchmove', onMove);
   canvas.addEventListener('touchend', onUp);
+
+  window.addEventListener('resize', onResize);
 
   window.addEventListener('keydown', e => {
     // return unless the keypress is meta/contrl + z (for undo)
