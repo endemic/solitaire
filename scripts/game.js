@@ -20,24 +20,18 @@ const onImageLoad = e => {
   }
 }
 
-// convert global browser coordinates to canvas coordinates
 const getCoords = event => {
-  // need to scale the touches by the actual size of the canvas;
-  // e.g. the canvas still thinks it is 605px wide even if it is
-  // scaled to 400px by CSS rules
-  const scale = event.target.width / event.target.clientWidth;
-
   if (event.changedTouches && event.changedTouches.length > 0) {
     return {
-      x: event.changedTouches[0].clientX * scale,
-      y: event.changedTouches[0].clientY * scale
+      x: event.changedTouches[0].clientX,
+      y: event.changedTouches[0].clientY
     };
   }
 
   // this seems to translate to <canvas> coordinates
   return {
-    x: event.x - event.target.offsetLeft,
-    y: event.y - event.target.offsetTop
+    x: event.x,
+    y: event.y
   }
 };
 
@@ -508,15 +502,23 @@ const klondike = e => {
   };
 
   const onResize = () => {
-    let windowWidth = window.innerWidth;
-    let windowHeight = window.innerHeight;
-    let aspectRatio = 4 / 3;
-    let canvas = document.querySelector('#game');
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    const aspectRatio = 4 / 3;
+    const scale = window.devicePixelRatio;
+    const canvas = document.querySelector('#game');
 
     // canvas is as large as the window;
     // cards will be placed in a subset of this area
-    canvas.width = windowWidth;
-    canvas.height = windowHeight;
+    canvas.style.width = `${windowWidth}px`;
+    canvas.style.height = `${windowHeight}px`;
+
+    // account for high DPI screens
+    canvas.width = Math.floor(windowWidth * scale);
+    canvas.height = Math.floor(windowHeight * scale);
+
+    // normalize coordinate system
+    canvas.getContext('2d').scale(scale, scale);
 
     // playable area, where cards will be drawn
     let tableauWidth;
