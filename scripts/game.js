@@ -188,18 +188,56 @@ const klondike = e => {
     });
   };
 
+  const attemptToPlayOnFoundation = card => {
+    // check the last card of each foundation
+    // and see if the card passed as an arg can be played
+    // loop is reversed so the nearest foundation is checked first
+    for (let i = foundations.length - 1; i >= 0; i -= 1) {
+      let f = foundations[i];
+
+      if (f.validPlay(card)) {
+        let target = f.lastCard;
+
+        undoStack.push({
+          card: card,
+          target: target,
+          parent: card.parent
+        });
+
+        // remove card from previous parent
+        card.parent.child = null;
+
+        // add to foundation stack
+        target.child = card;
+        card.parent = target;
+
+        // update tableau display
+        draw();
+
+        // check for win condition
+        // TODO: move this elsewhar
+        if (checkWin()) {
+          interval = fallingCards(canvas, foundations);
+        }
+
+        // card was played, so no longer need to check
+        // subsequent foundations
+        break;
+      }
+    }
+  };
+
   // Event handlers
   const onDown = e => {
     e.preventDefault();
 
-    // let delta = Date.now() - lastOnDownTimestamp;
-    // console.log(delta)
-    // lastOnDownTimestamp = Date.now();
+    let delta = Date.now() - lastOnDownTimestamp;
+    let doubleClick = delta < DOUBLE_CLICK_MS;
 
-    // if (delta < DOUBLE_CLICK_MS) {
-    //   onDouble(e);
-    //   return;
-    // }
+    // reset the timestamp that stores the last time the player clicked
+    // if the current click counts as "double", then set the timestamp way in the past
+    // otherwise you get a "3 click double click" because the 2nd/3rd clicks are too close together
+    lastOnDownTimestamp = doubleClick ? 0 : Date.now();
 
     let point = getCoords(e);
 
@@ -244,10 +282,18 @@ const klondike = e => {
 
     // if player clicks the waste pile
     if (waste.touched(point) && waste.hasCards) {
-      canvas.style.cursor = 'grabbing';
-
       // "grab" the top-most card
       let card = waste.lastCard;
+
+      if (doubleClick) {
+        // try to play the card directly on to one of the foundations
+        attemptToPlayOnFoundation(card);
+
+        // no additional actions after a double-click
+        return;
+      }
+
+      canvas.style.cursor = 'grabbing';
 
       // remove card from "waste" list
       card.parent.child = null;
@@ -287,20 +333,31 @@ const klondike = e => {
 
     // check for picking up cards on play piles
     piles.forEach(p => {
+      if (!p.hasCards) {
+        return;
+      }
+
       let card = p.touchedStack(point);
 
       // if player touched a card
-      // TODO: require one click to turn the card over first?
-      // verify that behavior in original game
+      // TODO: `touchedStack` returns true if there are no cards
       if (card) {
-        canvas.style.cursor = 'grabbing';
-
         if (!card.faceUp) {
           card.faceUp = true;
 
           // TODO: don't allow the same click to both turn over _and_ grab card
           return;
         }
+
+        if (doubleClick) {
+          // try to play the card directly on to one of the foundations
+          attemptToPlayOnFoundation(card);
+
+          // no additional actions after a double-click
+          return;
+        }
+
+        canvas.style.cursor = 'grabbing';
 
         // break the parent -> child connection so the card(s) are no longer drawn at the source
         // but keep the parent <- child connection until card(s) are dropped
@@ -340,13 +397,6 @@ const klondike = e => {
 
   const onUp = e => {
     e.preventDefault();
-
-    if (interval) {
-      window.clearInterval(interval);
-      interval = null;
-
-      // TODO: reset game
-    }
 
     let point = getCoords(e);
 
@@ -414,85 +464,8 @@ const klondike = e => {
       card.parent.child = card;
     }
 
-    // "release" reference to card
+    // "release" reference to card(s)
     grabbed.child = null;
-
-    draw();
-
-    if (checkWin()) {
-      interval = fallingCards(canvas, foundations);
-    }
-  };
-
-  // allow double click/tap to auto-play cards
-  const onDouble = e => {
-    let point = getCoords(e);
-
-    // play directly from the waste pile
-    if (touchedCard(point, waste) && waste.hasCards) {
-      let card = waste.lastCard;
-
-      // determine if card can be played on one of the foundation stacks
-      for (let i = foundations.length - 1; i >= 0; i -= 1) {
-        let f = foundations[i];
-        let target = f.lastCard;
-        let valid = validFoundationPlay(card, target);
-
-        if (valid) {
-          undoStack.push({
-            card: card,
-            target: target,
-            parent: card.parent
-          });
-
-          // remove card from waste
-          card.parent.child = null;
-
-          // add to foundation stack
-          target.child = card;
-          card.parent = target;
-
-          // made a valid play, no longer need to loop checking other foundation stacks
-          break;
-        }
-      }
-    }
-
-    // after double click, check each pile
-    for (let i = 0; i < piles.length; i += 1) {
-      let p = piles[i];
-
-      // if pile was double-clicked
-      if (touchedStack(point, p)) {
-        // find the last card on the pile
-        let card = p.lastCard;
-
-        // determine if that same card can be played on one of the foundation stacks
-        for (let i = foundations.length - 1; i >= 0; i -= 1) {
-          let f = foundations[i];
-          let target = f.lastCard;
-          let valid = validFoundationPlay(card, target);
-
-          if (valid) {
-            undoStack.push({
-              card: card,
-              target: target,
-              parent: card.parent
-            });
-
-            // remove card from pile
-            card.parent.child = null;
-
-            // add to foundation stack
-            target.child = card;
-            card.parent = target;
-
-            // made a valid play, no longer need to loop checking other foundation stacks
-            break;
-          }
-        }
-      }
-    }
 
     draw();
 
@@ -597,39 +570,20 @@ const klondike = e => {
       });
     }
 
-
-    // debug
-    // let ctx = canvas.getContext('2d');
-    // ctx.fillStyle = 'red';
-    // ctx.fillRect(windowMargin, 0, tableauWidth, tableauHeight);
-
     if (!interval) {
       // update screen if not displaying card waterfall
       draw();
     }
   };
 
-  // initial draw/resize
-  onResize();
-
-  canvas.addEventListener('mousedown', onDown);
-  canvas.addEventListener('mousemove', onMove);
-  canvas.addEventListener('mouseup', onUp);
-
-  canvas.addEventListener('touchstart', onDown);
-  canvas.addEventListener('touchmove', onMove);
-  canvas.addEventListener('touchend', onUp);
-
-  window.addEventListener('resize', onResize);
-
-  window.addEventListener('keydown', e => {
+  const undo = event => {
     // return unless the keypress is meta/contrl + z (for undo)
-    if (!(e.metaKey || e.ctrlKey) || e.key !== 'z') {
+    if (!(event.metaKey || event.ctrlKey) || event.key !== 'z') {
       return;
     }
 
     if (undoStack.length < 1) {
-      console.log("Can't undo!");
+      console.log("No previously saved moves on the undo stack.");
       return;
     }
 
@@ -643,8 +597,23 @@ const klondike = e => {
     card.parent = parent;
     parent.child = card;
 
+    // update the screen
     draw();
-  });
+  }
+
+  // initial draw/resize
+  onResize();
+
+  canvas.addEventListener('mousedown', onDown);
+  canvas.addEventListener('mousemove', onMove);
+  canvas.addEventListener('mouseup', onUp);
+
+  canvas.addEventListener('touchstart', onDown);
+  canvas.addEventListener('touchmove', onMove);
+  canvas.addEventListener('touchend', onUp);
+
+  window.addEventListener('resize', onResize);
+  window.addEventListener('keydown', undo);
 };
 
 export default klondike;
