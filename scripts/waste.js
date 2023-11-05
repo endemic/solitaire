@@ -1,8 +1,8 @@
 import Stack from './stack.js';
 
 export default class Waste extends Stack {
-  constructor(x, y) {
-    super('waste', x, y);
+  constructor() {
+    super('waste');
   }
 
   draw(context) {

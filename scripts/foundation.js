@@ -1,10 +1,10 @@
 import Stack from './stack.js';
 
 export default class Foundation extends Stack {
-  constructor(x, y, images) {
-    super('foundation', x, y);
+  constructor(targetImage) {
+    super('foundation');
 
-    this.image = images['backs_target'];
+    this.image = targetImage;
   }
 
   draw(context) {

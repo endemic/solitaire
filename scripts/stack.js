@@ -1,10 +1,10 @@
 export default class Stack {
   child = null;
+  x = 0;
+  y = 0;
 
-  constructor(type, x, y) {
-    this.type = type
-    this.x = x;
-    this.y = y;
+  constructor(type) {
+    this.type = type;
   }
 
   get hasCards() {

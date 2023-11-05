@@ -16,24 +16,9 @@ const onImageLoad = e => {
   if (loadedImageCount === IMG_SRC.length) {
     // TODO: initialize the canvas before this, so a "loading" progress bar can be
     // displayed (or "Loading..." text)
-    klondike();
+    new Klondike();
   }
 }
-
-const getCoords = event => {
-  if (event.changedTouches && event.changedTouches.length > 0) {
-    return {
-      x: event.changedTouches[0].clientX,
-      y: event.changedTouches[0].clientY
-    };
-  }
-
-  // this seems to translate to <canvas> coordinates
-  return {
-    x: event.x,
-    y: event.y
-  }
-};
 
 // enumerate over image sources, and load them into memory
 IMG_SRC.forEach(src => {
@@ -45,137 +30,169 @@ IMG_SRC.forEach(src => {
   IMAGES[key].addEventListener('load', onImageLoad);
 });
 
-const klondike = e => {
-  const canvas = document.getElementById('game');
-  const context = canvas.getContext('2d');
+// ----------------------------------------------
 
-  const undoStack = [];
+class Klondike {
+  undoStack = [];
 
   // var to hold reference to grabbed card(s)
-  const grabbed = new Stack('grabbed', 0, 0);
+  grabbed = new Stack('grabbed');
 
   // record the cursor offset where the card was picked up,
   // so clicking the card doesn't cause it to "jump" to the cursor
-  const grabOffset = {x: 0, y: 0};
+  grabOffset = {x: 0, y: 0};
 
   // used for custom double-click/tap implementation
   // this val is set in `onDown` function; if it is called again rapidly
   // (e.g. within 500ms) then the interaction counts as a double-click
-  let lastOnDownTimestamp = Date.now();
+  lastOnDownTimestamp = Date.now();
 
   // stores reference to falling cards animation
-  let interval;
+  interval;
 
   // initialize all places where a card can be placed - https://en.wikipedia.org/wiki/Glossary_of_patience_terms
 
-  // "talon" (draw pile)
-  // placed in the upper left hand corner
-  const talon = new Talon(0, 0, IMAGES);
+  // "talon" (draw pile) - placed in the upper left hand corner
+  talon = new Talon(IMAGES['backs_target']);
 
-  // "waste" (play stack)
-  // placed relative to the talon
-  const waste = new Waste(0, 0);
+  // "waste" (play stack) - placed relative to the talon
+  waste = new Waste();
 
-  // 4 "foundations"
-  // aligned vertically with talon/waste, on right side of tableau
-  const foundations = [];
-  for (let i = 0; i < 4; i += 1) {
-    foundations.push(new Foundation(0, 0, IMAGES));
-  }
+  // 4 "foundations" - aligned vertically with talon/waste, on right side of tableau
+  foundations = [
+    new Foundation(IMAGES['backs_target']),
+    new Foundation(IMAGES['backs_target']),
+    new Foundation(IMAGES['backs_target']),
+    new Foundation(IMAGES['backs_target'])
+  ];
 
-  // 7 "piles"
-  // spans the width of the tableau, under the talon/waste/foundations
-  const piles = [];
-  for (let i = 0; i < 7; i += 1) {
-    piles.push(new Pile(0, 0));
-  }
+  // 7 "piles" - span the width of the tableau, under the talon/waste/foundations
+  piles = [ new Pile(), new Pile(), new Pile(), new Pile(), new Pile(), new Pile(), new Pile()];
 
-  // initialize deck
-  const DECK = [];
+  // stores a reference of all cards
+  cards = [];
 
-  // list of cards, to enumerate when changing sizes
-  const cards = [];
+  constructor() {
+    this.canvas = document.getElementById('game');
+    this.context = this.canvas.getContext('2d');
 
-  SUITS.forEach(suit => {
-    RANKS.forEach(rank => {
-      const card = new Card(rank, suit, IMAGES);
-      DECK.push(card);
-      cards.push(card);
+    // initialize list of cards
+    SUITS.forEach(suit => {
+      RANKS.forEach(rank => {
+        this.cards.push(new Card(rank, suit, IMAGES));
+      });
     });
-  });
 
-  DECK.shuffle();
+    this.deal();
 
-  // TEMP: put cards in foundations in order to test falling card demo
-  // for (let i = 0; i < foundations.length; i += 1) {
-  //   let target = foundations[i];
+    // initial draw/resize
+    this.onResize();
 
-  //   for (let j = 0; j < 13; j += 1) {
-  //     let card = DECK.shift();
+    // various event listeners
+    this.canvas.addEventListener('mousedown', e => this.onDown(e));
+    this.canvas.addEventListener('mousemove', e => this.onMove(e));
+    this.canvas.addEventListener('mouseup', e => this.onUp(e));
 
-  //     card.faceUp = true;
-  //     card.x = target.x;
-  //     card.y = target.y;
+    this.canvas.addEventListener('touchstart', e => this.onDown(e));
+    this.canvas.addEventListener('touchmove', e => this.onMove(e));
+    this.canvas.addEventListener('touchend', e => this.onUp(e));
 
-  //     card.parent = target;
-  //     target.child = card;
-
-  //     target = card;
-  //   }
-  // }
-
-  // populate the playing piles
-  // This is super janky -- there is probably a better way to do this
-  // TODO: 100ms delay (or similar) between placing cards
-  let faceUpIndex = 0;
-  for (let i = 0; i < Math.pow(piles.length, 2); i += 1) {
-    let j = i % piles.length;
-
-    let lastCard = piles[j].lastCard;
-
-    if (lastCard.faceUp) {
-      continue;
-    }
-
-    let card = DECK.pop();
-
-    if (i === faceUpIndex) {
-      card.faceUp = true;
-      faceUpIndex += piles.length + 1;
-    }
-
-    lastCard.child = card;
-    card.parent = lastCard;
+    window.addEventListener('resize', e => this.onResize(e));
+    window.addEventListener('keydown', e => this.undo(e));
   }
 
-  // put the rest of the cards in the talon
-  while (DECK.length) {
-    let card = DECK.pop();
-    let parent = talon.lastCard;
+  getCoords(event) {
+    if (event.changedTouches && event.changedTouches.length > 0) {
+      return {
+        x: event.changedTouches[0].clientX,
+        y: event.changedTouches[0].clientY
+      };
+    }
 
-    parent.child = card;
-    card.parent = parent;
+    // this seems to translate to <canvas> coordinates
+    return {
+      x: event.x,
+      y: event.y
+    }
   }
 
-  const draw = () => {
+  deal() {
+    const piles = this.piles;
+    const talon = this.talon;
+
+    const deck = [];
+
+    this.cards.forEach(card => deck.push(card));
+
+    // shuffle deck
+    let currentIndex = deck.length;
+    let randomIndex;
+
+    // While there remain elements to shuffle.
+    while (currentIndex !== 0) {
+      // Pick a remaining element.
+      randomIndex = Math.floor(Math.random() * currentIndex);
+      currentIndex--;
+
+      // And swap it with the current element.
+      [deck[currentIndex], deck[randomIndex]] = [deck[randomIndex], deck[currentIndex]];
+    }
+
+    // TODO: reset all parent/child relationships
+
+    // populate the playing piles
+    // This is super janky -- there is probably a better way to do this
+    // TODO: 100ms delay (or similar) between placing cards
+    let faceUpIndex = 0;
+    for (let i = 0; i < Math.pow(piles.length, 2); i += 1) {
+      let j = i % piles.length;
+
+      let lastCard = piles[j].lastCard;
+
+      if (lastCard.faceUp) {
+        continue;
+      }
+
+      let card = deck.pop();
+
+      if (i === faceUpIndex) {
+        card.faceUp = true;
+        faceUpIndex += piles.length + 1;
+      }
+
+      lastCard.child = card;
+      card.parent = lastCard;
+    }
+
+    // put the rest of the cards in the talon
+    while (deck.length) {
+      let card = deck.pop();
+      let parent = talon.lastCard;
+
+      parent.child = card;
+      card.parent = parent;
+    }
+  }
+
+  draw() {
     // clear previous contents
-    context.clearRect(0, 0, canvas.width, canvas.height);
+    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     // draw card piles
-    talon.draw(context);
-    waste.draw(context);
-    foundations.forEach(f => f.draw(context));
-    piles.forEach(p => p.draw(context));
+    this.talon.draw(this.context);
+    this.waste.draw(this.context);
+    this.foundations.forEach(f => f.draw(this.context));
+    this.piles.forEach(p => p.draw(this.context));
 
     // draw any cards currently being moved by player
-    grabbed.draw(context);
-  };
+    this.grabbed.draw(this.context);
+  }
 
-  const checkWin = () => {
+  checkWin() {
     // ensure that each foundation has 13 cards; we
     // don't check for matching suit or ascending rank because
     // those checks are done when the card is laid down
-    return foundations.every(f => {
+    return this.foundations.every(f => {
       let count = 0;
       let parent = f;
 
@@ -186,19 +203,19 @@ const klondike = e => {
 
       return count === 13;
     });
-  };
+  }
 
-  const attemptToPlayOnFoundation = card => {
+  attemptToPlayOnFoundation(card) {
     // check the last card of each foundation
     // and see if the card passed as an arg can be played
     // loop is reversed so the nearest foundation is checked first
-    for (let i = foundations.length - 1; i >= 0; i -= 1) {
-      let f = foundations[i];
+    for (let i = this.foundations.length - 1; i >= 0; i -= 1) {
+      let f = this.foundations[i];
 
       if (f.validPlay(card)) {
         let target = f.lastCard;
 
-        undoStack.push({
+        this.undoStack.push({
           card: card,
           target: target,
           parent: card.parent
@@ -212,12 +229,12 @@ const klondike = e => {
         card.parent = target;
 
         // update tableau display
-        draw();
+        this.draw();
 
         // check for win condition
         // TODO: move this elsewhar
-        if (checkWin()) {
-          interval = fallingCards(canvas, foundations);
+        if (this.checkWin()) {
+          this.interval = fallingCards(this.canvas, this.foundations);
         }
 
         // card was played, so no longer need to check
@@ -225,21 +242,24 @@ const klondike = e => {
         break;
       }
     }
-  };
+  }
 
-  // Event handlers
-  const onDown = e => {
+  onDown(e) {
     e.preventDefault();
 
-    let delta = Date.now() - lastOnDownTimestamp;
+    let delta = Date.now() - this.lastOnDownTimestamp;
     let doubleClick = delta < DOUBLE_CLICK_MS;
 
     // reset the timestamp that stores the last time the player clicked
     // if the current click counts as "double", then set the timestamp way in the past
     // otherwise you get a "3 click double click" because the 2nd/3rd clicks are too close together
-    lastOnDownTimestamp = doubleClick ? 0 : Date.now();
+    this.lastOnDownTimestamp = doubleClick ? 0 : Date.now();
 
-    let point = getCoords(e);
+    let point = this.getCoords(e);
+    const talon = this.talon;
+    const waste = this.waste;
+    const foundations = this.foundations;
+    const piles = this.piles;
 
     if (talon.touched(point)) {
       if (talon.hasCards) {
@@ -256,7 +276,7 @@ const klondike = e => {
         card.parent = target;
         target.child = card;
 
-        undoStack.push({
+        this.undoStack.push({
           card: card,
           target: target,
           parent: card.parent
@@ -287,32 +307,32 @@ const klondike = e => {
 
       if (doubleClick) {
         // try to play the card directly on to one of the foundations
-        attemptToPlayOnFoundation(card);
+        this.attemptToPlayOnFoundation(card);
 
         // no additional actions after a double-click
         return;
       }
 
-      canvas.style.cursor = 'grabbing';
+      this.canvas.style.cursor = 'grabbing';
 
       // remove card from "waste" list
       card.parent.child = null;
 
       // add to stack which player is "holding"
-      grabbed.child = card;
+      this.grabbed.child = card;
 
-      grabOffset.x = point.x - card.x;
-      grabOffset.y = point.y - card.y;
+      this.grabOffset.x = point.x - card.x;
+      this.grabOffset.y = point.y - card.y;
 
       // move the card along with the touch/cursor
-      grabbed.x = point.x - grabOffset.x;
-      grabbed.y = point.y - grabOffset.y;
+      this.grabbed.x = point.x - this.grabOffset.x;
+      this.grabbed.y = point.y - this.grabOffset.y;
     }
 
     // allow player to pick cards back up off the foundations if needed
     foundations.forEach(f => {
       if (f.touched(point) && f.hasCards) {
-        canvas.style.cursor = 'grabbing';
+        this.canvas.style.cursor = 'grabbing';
 
         let card = f.lastCard;
 
@@ -322,12 +342,12 @@ const klondike = e => {
         // add to stack which player is "holding"
         grabbed.child = card;
 
-        grabOffset.x = point.x - card.x;
-        grabOffset.y = point.y - card.y;
+        this.grabOffset.x = point.x - card.x;
+        this.grabOffset.y = point.y - card.y;
 
         // move the card along with the touch/cursor
-        grabbed.x = point.x - grabOffset.x;
-        grabbed.y = point.y - grabOffset.y;
+        this.grabbed.x = point.x - this.grabOffset.x;
+        this.grabbed.y = point.y - this.grabOffset.y;
       }
     });
 
@@ -340,72 +360,77 @@ const klondike = e => {
       let card = p.touchedStack(point);
 
       // if player touched a card
-      // TODO: `touchedStack` returns true if there are no cards
       if (card) {
         if (!card.faceUp) {
           card.faceUp = true;
 
-          // TODO: don't allow the same click to both turn over _and_ grab card
+          // don't allow the same click to both turn over _and_ grab card
           return;
         }
 
         if (doubleClick) {
           // try to play the card directly on to one of the foundations
-          attemptToPlayOnFoundation(card);
+          this.attemptToPlayOnFoundation(card);
 
           // no additional actions after a double-click
           return;
         }
 
-        canvas.style.cursor = 'grabbing';
+        this.canvas.style.cursor = 'grabbing';
 
         // break the parent -> child connection so the card(s) are no longer drawn at the source
         // but keep the parent <- child connection until card(s) are dropped
         card.parent.child = null;
 
         // add to stack which player is "holding"
-        grabbed.child = card;
+        this.grabbed.child = card;
 
-        grabOffset.x = point.x - card.x;
-        grabOffset.y = point.y - card.y;
+        // TODO: move "graboffset" internal to "grabbed" object
+        this.grabOffset.x = point.x - card.x;
+        this.grabOffset.y = point.y - card.y;
 
         // move the card along with the touch/cursor
-        grabbed.x = point.x - grabOffset.x;
-        grabbed.y = point.y - grabOffset.y;
+        this.grabbed.x = point.x - this.grabOffset.x;
+        this.grabbed.y = point.y - this.grabOffset.y;
       }
     });
 
     // update canvas
-    draw();
-  };
+    this.draw();
+  }
 
-  const onMove = e => {
+  onMove(e) {
     e.preventDefault();
 
-    if (!grabbed.hasCards) {
+    if (!this.grabbed.hasCards) {
       return;
     }
 
-    let {x, y} = getCoords(e);
+    let {x, y} = this.getCoords(e);
 
     // move the card along with the touch/cursor
-    grabbed.x = x - grabOffset.x;
-    grabbed.y = y - grabOffset.y;
+    // TODO: move "graboffset" internal to "grabbed" object
+    this.grabbed.x = x - this.grabOffset.x;
+    this.grabbed.y = y - this.grabOffset.y;
 
-    draw();
-  };
+    this.draw();
+  }
 
-  const onUp = e => {
+  onUp(e) {
     e.preventDefault();
 
-    let point = getCoords(e);
+    let point = this.getCoords(e);
+
+    const grabbed = this.grabbed;
+    const foundations = this.foundations;
+    const piles = this.piles;
 
     // if not holding a card, then there's nothing to do
     if (!grabbed.hasCards) {
       return;
     }
 
-    canvas.style.cursor = 'grab';
+    this.canvas.style.cursor = 'grab';
 
     // check if current position of card overlaps
     // any playable area; if so, move to that location
@@ -421,7 +446,7 @@ const klondike = e => {
         valid = f.validPlay(card);
 
         if (valid) {
-          undoStack.push({
+          this.undoStack.push({
             card,
             target,
             parent: card.parent
@@ -442,7 +467,7 @@ const klondike = e => {
         valid = p.validPlay(card);
 
         if (valid) {
-          undoStack.push({
+          this.undoStack.push({
             card,
             target,
             parent: card.parent
@@ -467,19 +492,26 @@ const klondike = e => {
     // "release" reference to card(s)
     grabbed.child = null;
 
-    draw();
+    this.draw();
 
-    if (checkWin()) {
-      interval = fallingCards(canvas, foundations);
+    if (this.checkWin()) {
+      this.interval = fallingCards(canvas, foundations);
     }
-  };
+  }
 
-  const onResize = () => {
+  onResize(e) {
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
     const aspectRatio = 4 / 3;
     const scale = window.devicePixelRatio;
-    const canvas = document.querySelector('#game');
+
+    const canvas = this.canvas;
+    const grabbed = this.grabbed;
+    const talon = this.talon;
+    const waste = this.waste;
+    const foundations = this.foundations;
+    const piles = this.piles;
+    const cards = this.cards;
 
     // canvas is as large as the window;
     // cards will be placed in a subset of this area
@@ -570,25 +602,25 @@ const klondike = e => {
       });
     }
 
-    if (!interval) {
+    if (!this.interval) {
       // update screen if not displaying card waterfall
-      draw();
+      this.draw();
     }
-  };
+  }
 
-  const undo = event => {
+  undo(e) {
     // return unless the keypress is meta/contrl + z (for undo)
-    if (!(event.metaKey || event.ctrlKey) || event.key !== 'z') {
+    if (!(e.metaKey || e.ctrlKey) || e.key !== 'z') {
       return;
     }
 
-    if (undoStack.length < 1) {
+    if (this.undoStack.length < 1) {
       console.log("No previously saved moves on the undo stack.");
       return;
     }
 
     // get card state _before_ the most recent move
-    let {card, parent, target} = undoStack.pop();
+    let {card, parent, target} = this.undoStack.pop();
 
     // remove destination
     target.child = null;
@@ -598,22 +630,8 @@ const klondike = e => {
     parent.child = card;
 
     // update the screen
-    draw();
+    this.draw();
   }
+} // end Klondike
 
-  // initial draw/resize
-  onResize();
-
-  canvas.addEventListener('mousedown', onDown);
-  canvas.addEventListener('mousemove', onMove);
-  canvas.addEventListener('mouseup', onUp);
-
-  canvas.addEventListener('touchstart', onDown);
-  canvas.addEventListener('touchmove', onMove);
-  canvas.addEventListener('touchend', onUp);
-
-  window.addEventListener('resize', onResize);
-  window.addEventListener('keydown', undo);
-};
-
-export default klondike;
+export default Klondike;

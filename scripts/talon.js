@@ -1,10 +1,10 @@
 import Stack from './stack.js';
 
 export default class Talon extends Stack {
-  constructor(x, y, images) {
-    super('talon', x, y);
+  constructor(targetImage) {
+    super('talon');
 
-    this.image = images['backs_target'];
+    this.image = targetImage;
   }
 
   draw(context) {
