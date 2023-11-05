@@ -1,9 +1,9 @@
 import Card from './card.js';
-import Stack from './stack.js';
 import Talon from './talon.js';
 import Waste from './waste.js';
 import Foundation from './foundation.js';
 import Pile from './pile.js';
+import Grabbed from './grabbed.js';
 
 const IMAGES = {};
 let loadedImageCount = 0;
@@ -36,11 +36,7 @@ class Klondike {
   undoStack = [];
 
   // var to hold reference to grabbed card(s)
-  grabbed = new Stack('grabbed');
-
-  // record the cursor offset where the card was picked up,
-  // so clicking the card doesn't cause it to "jump" to the cursor
-  grabOffset = {x: 0, y: 0};
+  grabbed = new Grabbed();
 
   // used for custom double-click/tap implementation
   // this val is set in `onDown` function; if it is called again rapidly
@@ -67,7 +63,7 @@ class Klondike {
   ];
 
   // 7 "piles" - span the width of the tableau, under the talon/waste/foundations
-  piles = [ new Pile(), new Pile(), new Pile(), new Pile(), new Pile(), new Pile(), new Pile()];
+  piles = [new Pile(), new Pile(), new Pile(), new Pile(), new Pile(), new Pile(), new Pile()];
 
   // stores a reference of all cards
   cards = [];
@@ -321,12 +317,11 @@ class Klondike {
       // add to stack which player is "holding"
       this.grabbed.child = card;
 
-      this.grabOffset.x = point.x - card.x;
-      this.grabOffset.y = point.y - card.y;
+      // set offset at which the card is grabbed
+      this.grabbed.setOffset(point);
 
-      // move the card along with the touch/cursor
-      this.grabbed.x = point.x - this.grabOffset.x;
-      this.grabbed.y = point.y - this.grabOffset.y;
+      // move the grabbed stack to the cursor
+      this.grabbed.move(point);
     }
 
     // allow player to pick cards back up off the foundations if needed
@@ -340,14 +335,13 @@ class Klondike {
         card.parent.child = null;
 
         // add to stack which player is "holding"
-        grabbed.child = card;
+        this.grabbed.child = card;
 
-        this.grabOffset.x = point.x - card.x;
-        this.grabOffset.y = point.y - card.y;
+        // set offset at which the card is grabbed
+        this.grabbed.setOffset(point);
 
-        // move the card along with the touch/cursor
-        this.grabbed.x = point.x - this.grabOffset.x;
-        this.grabbed.y = point.y - this.grabOffset.y;
+        // move the grabbed stack to the cursor
+        this.grabbed.move(point);
       }
     });
 
@@ -385,13 +379,11 @@ class Klondike {
         // add to stack which player is "holding"
         this.grabbed.child = card;
 
-        // TODO: move "graboffset" internal to "grabbed" object
-        this.grabOffset.x = point.x - card.x;
-        this.grabOffset.y = point.y - card.y;
+        // set offset at which the card is grabbed
+        this.grabbed.setOffset(point);
 
-        // move the card along with the touch/cursor
-        this.grabbed.x = point.x - this.grabOffset.x;
-        this.grabbed.y = point.y - this.grabOffset.y;
+        // move the grabbed stack to the cursor
+        this.grabbed.move(point);
       }
     });
 
@@ -406,12 +398,10 @@ class Klondike {
       return;
     }
 
-    let {x, y} = this.getCoords(e);
+    let point = this.getCoords(e);
 
     // move the card along with the touch/cursor
-    // TODO: move "graboffset" internal to "grabbed" object
-    this.grabbed.x = x - this.grabOffset.x;
-    this.grabbed.y = y - this.grabOffset.y;
+    this.grabbed.move(point);
 
     this.draw();
   }
