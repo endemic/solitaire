@@ -8,6 +8,13 @@ export default class Card {
   parent = null;
   child = null;
 
+  // position/size values are set externally by
+  // a method that inspects viewport dimensions
+  x = null;
+  y = null;
+  width = null;
+  height = null;
+
   allRanks = ['ace', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'jack', 'queen', 'king'];
 
   constructor(rank, suit, images) {

@@ -243,15 +243,15 @@ class Klondike {
   onDown(e) {
     e.preventDefault();
 
-    let delta = Date.now() - this.lastOnDownTimestamp;
-    let doubleClick = delta < DOUBLE_CLICK_MS;
+    const delta = Date.now() - this.lastOnDownTimestamp;
+    const doubleClick = delta < 500;
 
     // reset the timestamp that stores the last time the player clicked
     // if the current click counts as "double", then set the timestamp way in the past
     // otherwise you get a "3 click double click" because the 2nd/3rd clicks are too close together
     this.lastOnDownTimestamp = doubleClick ? 0 : Date.now();
 
-    let point = this.getCoords(e);
+    const point = this.getCoords(e);
     const talon = this.talon;
     const waste = this.waste;
     const foundations = this.foundations;
@@ -346,22 +346,31 @@ class Klondike {
     });
 
     // check for picking up cards on play piles
-    piles.forEach(p => {
+    // piles.forEach(p => {
+    for (let i = 0; i < piles.length; i += 1) {
+      const p = piles[i];
+
+      // if the pile has no cards, go to the next one
       if (!p.hasCards) {
-        return;
+        continue;
       }
 
-      let card = p.touchedStack(point);
+      const card = p.touchedStack(point);
 
       // if player touched a card
       if (card) {
         if (!card.faceUp) {
           card.faceUp = true;
 
+          // draw the now face-up card
+          this.draw();
+
           // don't allow the same click to both turn over _and_ grab card
           return;
         }
 
+        // TODO: is this problematic because it only returns from the `forEach` callback,
+        // instead of stopping execution of the entire `onDown` method?
         if (doubleClick) {
           // try to play the card directly on to one of the foundations
           this.attemptToPlayOnFoundation(card);
@@ -385,7 +394,7 @@ class Klondike {
         // move the grabbed stack to the cursor
         this.grabbed.move(point);
       }
-    });
+    }
 
     // update canvas
     this.draw();
@@ -428,8 +437,10 @@ class Klondike {
     let valid = false;
 
     // check to see if card can be played on foundations
-    foundations.forEach(f => {
-      if (f.touched(point)) {
+    for (let i = 0; i < foundations.length; i += 1) {
+      const f = foundations[i];
+
+      if (grabbed.overlaps(f)) {
         let target = f.lastCard;
         let card = grabbed.child;
 
@@ -444,13 +455,20 @@ class Klondike {
 
           target.child = card;
           card.parent = target;
+
+          // successfully placed card; break out of loop,
+          // because card can overlap multiple valid piles
+          // and shouldn't be placed in more than one pile
+          break;
         }
       }
-    });
+    }
 
     // check to see if card can be played on piles
-    piles.forEach(p => {
-      if (p.touchedStack(point)) {
+    for (let i = 0; i < piles.length; i += 1) {
+      const p = piles[i];
+
+      if (grabbed.overlaps(p)) {
         let target = p.lastCard;
         let card = grabbed.child;
 
@@ -465,9 +483,14 @@ class Klondike {
 
           target.child = card;
           card.parent = target;
+
+          // successfully placed card; break out of loop,
+          // because card can overlap multiple valid piles
+          // and shouldn't be placed in more than one pile
+          break;
         }
       }
-    });
+    }
 
     // if no valid play was made
     if (!valid) {

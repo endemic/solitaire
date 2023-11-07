@@ -16,14 +16,32 @@ export default class Grabbed extends Stack {
 
     this.pointOffset.x = point.x - card.x;
     this.pointOffset.y = point.y - card.y;
-
-    // ensure the top-most card is in the right position
-    card.x = this.x;
-    card.y = this.y;
   }
 
   move(point) {
     this.x = point.x - this.pointOffset.x;
     this.y = point.y - this.pointOffset.y;
+  }
+
+  // returns true if the "grabbed" bounding box overlaps
+  // the passed arg bounding box
+  overlaps(stack) {
+    // Calculate the sides of the boxes
+    let left1 = stack.x;
+    let right1 = stack.x + stack.size.width;
+    let top1 = stack.y;
+    let bottom1 = stack.y + stack.size.height;
+
+    let left2 = this.x;
+    let right2 = this.x + this.size.width;
+    let top2 = this.y;
+    let bottom2 = this.y + this.size.height;
+
+    // Check for collisions
+    if (bottom1 < top2 || top1 > bottom2 || right1 < left2 || left1 > right2) {
+        return false; // No collision
+    }
+
+    return true; // Collision detected
   }
 }

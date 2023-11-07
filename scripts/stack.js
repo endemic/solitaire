@@ -1,7 +1,12 @@
 export default class Stack {
   child = null;
-  x = 0;
-  y = 0;
+
+  // position/size values are set externally by
+  // a method that inspects viewport dimensions
+  x = null;
+  y = null;
+  width = null;
+  height = null;
 
   constructor(type) {
     this.type = type;
@@ -51,9 +56,28 @@ export default class Stack {
       let offset = card.faceUp ? this.cardOffset : this.cardOffset / 4;
 
       // set up for next card (if necessary)
-      y = y + offset;
+      y += offset;
+
       card = card.child;
     } while (card);
+  }
+
+  get size() {
+    let height = this.height;
+    let width = this.width;
+    let card = this.child;
+
+    // Add vertical size if there is more than one card in the stack
+    while (card && card.child) {
+      // if cards in play piles are still face down, draw them closer together
+      let offset = card.faceUp ? this.cardOffset : this.cardOffset / 4;
+
+      height += offset;
+
+      card = card.child;
+    }
+
+    return { width, height };
   }
 
   touched(point) {
