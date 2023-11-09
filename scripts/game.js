@@ -5,6 +5,8 @@ import Foundation from './foundation.js';
 import Pile from './pile.js';
 import Grabbed from './grabbed.js';
 
+import StatusBar from './status-bar.js';
+
 import { IMG_SRC, SUITS, RANKS } from './constants.js';
 import { fallingCards } from './falling_cards.js';
 
@@ -74,6 +76,8 @@ class Klondike {
   constructor() {
     this.canvas = document.getElementById('game');
     this.context = this.canvas.getContext('2d');
+
+    this.status = new StatusBar(this.canvas);
 
     // initialize list of cards
     SUITS.forEach(suit => {
@@ -208,6 +212,8 @@ class Klondike {
   draw() {
     // clear previous contents
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    this.status.draw();
 
     // draw card piles
     this.talon.draw(this.context);
