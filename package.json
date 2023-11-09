@@ -1,0 +1,23 @@
+{
+  "name": "solitaire",
+  "version": "1.0.0",
+  "description": "with apologies to wes cherry",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "npx eslint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/endemic/solitaire.git"
+  },
+  "author": "endemic",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/endemic/solitaire/issues"
+  },
+  "homepage": "https://github.com/endemic/solitaire#readme",
+  "devDependencies": {
+    "eslint": "^8.53.0"
+  }
+}
