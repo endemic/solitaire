@@ -1,4 +1,4 @@
-export const SUITS = ['hearts', 'diamonds', 'spades', 'clubs'];
+export const SUITS = ['hearts', 'spades', 'diamonds', 'clubs'];
 export const RANKS = ['ace', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'jack', 'queen', 'king'];
 
 export const IMG_SRC = [

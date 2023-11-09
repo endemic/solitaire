@@ -100,6 +100,8 @@ class Klondike {
     window.addEventListener('keydown', e => this.undo(e));
   }
 
+  // abstract getting x/y coords for user interactions for both
+  // multitouch and traditional (e.g. mouse/trackpad)
   getCoords(event) {
     if (event.changedTouches && event.changedTouches.length > 0) {
       return {
@@ -108,7 +110,6 @@ class Klondike {
       };
     }
 
-    // this seems to translate to <canvas> coordinates
     return {
       x: event.x,
       y: event.y
@@ -122,6 +123,37 @@ class Klondike {
     const deck = [];
 
     this.cards.forEach(card => deck.push(card));
+
+    // arrange cards for testing endgame
+    if (this.debug) {
+      // this.cards contains ace -> king in asc order, with suits
+      // hearts -> diamonds -> spades -> clubs
+      let indices = [];
+      for (let i = 12; i >= 0; i -= 1) {
+        let row = [i, i + 13, i + 26, i + 39];
+        if (i % 2 === 1) {
+          // reverse every other row so black plays on red, etc.
+          row.reverse(); // mutates in place
+        }
+        indices.push(row);
+      }
+
+      for (let i = 0; i < indices.length; i += 1) {
+        let row = indices[i];
+        for (let j = 0; j < row.length; j += 1) {
+          const pile = piles[j];
+          const parent = pile.lastCard;
+          const card = deck[row[j]];
+
+          card.faceUp = true;
+
+          parent.child = card;
+          card.parent = parent;
+        }
+      }
+
+      return;
+    }
 
     // shuffle deck
     let currentIndex = deck.length;
@@ -188,9 +220,8 @@ class Klondike {
   }
 
   checkWin() {
-    // ensure that each foundation has 13 cards; we
-    // don't check for matching suit or ascending rank because
-    // those checks are done when the card is laid down
+    // ensure that each foundation has 13 cards; we don't check for matching suit
+    // or ascending rank because those checks are done when the card is played
     return this.foundations.every(f => {
       let count = 0;
       let parent = f;
@@ -205,9 +236,7 @@ class Klondike {
   }
 
   attemptToPlayOnFoundation(card) {
-    // check the last card of each foundation
-    // and see if the card passed as an arg can be played
-    // loop is reversed so the nearest foundation is checked first
+    // loop is reversed so the foundation nearest the waste is checked first
     for (let i = this.foundations.length - 1; i >= 0; i -= 1) {
       let f = this.foundations[i];
 
@@ -215,8 +244,8 @@ class Klondike {
         let target = f.lastCard;
 
         this.undoStack.push({
-          card: card,
-          target: target,
+          card,
+          target,
           parent: card.parent
         });
 
@@ -227,19 +256,19 @@ class Klondike {
         target.child = card;
         card.parent = target;
 
-        // update tableau display
+        // update tableau
         this.draw();
-
-        // check for win condition
-        // TODO: move this elsewhar
-        if (this.checkWin()) {
-          this.interval = fallingCards(this.canvas, this.foundations);
-        }
 
         // card was played, so no longer need to check
         // subsequent foundations
         break;
       }
+    }
+
+    // See if the most recent move was a winning one
+    // TODO: move this elsewhar?
+    if (this.checkWin()) {
+      this.interval = fallingCards(this.canvas, this.foundations);
     }
   }
 
@@ -253,6 +282,8 @@ class Klondike {
     // if the current click counts as "double", then set the timestamp way in the past
     // otherwise you get a "3 click double click" because the 2nd/3rd clicks are too close together
     this.lastOnDownTimestamp = doubleClick ? 0 : Date.now();
+
+    // console.log(`Double-click? ${doubleClick ? 'Yes!' : 'No :('}; last "on down" timestamp: ${this.lastOnDownTimestamp}`);
 
     const point = this.getCoords(e);
     const talon = this.talon;
@@ -372,8 +403,6 @@ class Klondike {
           return;
         }
 
-        // TODO: is this problematic because it only returns from the `forEach` callback,
-        // instead of stopping execution of the entire `onDown` method?
         if (doubleClick) {
           // try to play the card directly on to one of the foundations
           this.attemptToPlayOnFoundation(card);
@@ -430,6 +459,7 @@ class Klondike {
       return;
     }
 
+    // reset cursor style
     this.canvas.style.cursor = 'grab';
 
     // check if current position of card overlaps
@@ -493,9 +523,8 @@ class Klondike {
       }
     }
 
-    // if no valid play was made
     if (!valid) {
-      // put the card back where it was
+      // if no valid play was made, put the card back where it was
       // we do this by re-establishing the link from the parent -> child,
       // so the parent object (waste, pile, etc.) will have a link to the child again
       let card = grabbed.child;
@@ -503,9 +532,10 @@ class Klondike {
       card.parent.child = card;
     }
 
-    // "release" reference to card(s)
+    // release reference to grabbed card(s)
     grabbed.child = null;
 
+    // update tableau
     this.draw();
 
     if (this.checkWin()) {

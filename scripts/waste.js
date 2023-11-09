@@ -40,4 +40,11 @@ export default class Waste extends Stack {
       card = card.child;
     }
   }
+
+  get size() {
+    let height = this.height;
+    let width = this.width;
+
+    return { width, height };
+  }
 }
