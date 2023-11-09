@@ -105,7 +105,7 @@ export default class Stack {
           point.y > card.y && point.y < card.y + height &&
           // only allow face up cards, or face down cards with no cards on top
           (card.faceUp || !card.child)) {
-          return card;
+        return card;
       }
 
       // look at the next card

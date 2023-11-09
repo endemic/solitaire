@@ -1,7 +1,7 @@
-const SUITS = ['hearts', 'diamonds', 'spades', 'clubs'];
-const RANKS = ['ace', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'jack', 'queen', 'king'];
+export const SUITS = ['hearts', 'diamonds', 'spades', 'clubs'];
+export const RANKS = ['ace', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'jack', 'queen', 'king'];
 
-const IMG_SRC = [
+export const IMG_SRC = [
   'images/backs/one.png',
   'images/backs/target.png',
 
@@ -61,11 +61,3 @@ const IMG_SRC = [
   'images/clubs/queen.png',
   'images/clubs/king.png',
 ];
-
-const margin = 10;
-const width = 605;
-const height = 454;
-const cardWidth = 75;
-const cardHeight = 100;
-const overlapOffset = 18;
-const DOUBLE_CLICK_MS = 400;

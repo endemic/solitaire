@@ -38,6 +38,5 @@ export default class Foundation extends Stack {
     }
 
     return false;
-  };
-
+  }
 }

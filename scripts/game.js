@@ -5,10 +5,13 @@ import Foundation from './foundation.js';
 import Pile from './pile.js';
 import Grabbed from './grabbed.js';
 
+import { IMG_SRC, SUITS, RANKS } from './constants.js';
+import { fallingCards } from './falling_cards.js';
+
 const IMAGES = {};
 let loadedImageCount = 0;
 
-const onImageLoad = e => {
+const onImageLoad = () => {
   // TODO: display a progress bar or something
   loadedImageCount += 1;
 
@@ -18,7 +21,7 @@ const onImageLoad = e => {
     // displayed (or "Loading..." text)
     new Klondike();
   }
-}
+};
 
 // enumerate over image sources, and load them into memory
 IMG_SRC.forEach(src => {
@@ -109,7 +112,7 @@ class Klondike {
     return {
       x: event.x,
       y: event.y
-    }
+    };
   }
 
   deal() {
@@ -418,8 +421,6 @@ class Klondike {
   onUp(e) {
     e.preventDefault();
 
-    let point = this.getCoords(e);
-
     const grabbed = this.grabbed;
     const foundations = this.foundations;
     const piles = this.piles;
@@ -508,11 +509,11 @@ class Klondike {
     this.draw();
 
     if (this.checkWin()) {
-      this.interval = fallingCards(canvas, foundations);
+      this.interval = fallingCards(this.canvas, foundations);
     }
   }
 
-  onResize(e) {
+  onResize() {
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
     const aspectRatio = 4 / 3;
@@ -628,7 +629,7 @@ class Klondike {
     }
 
     if (this.undoStack.length < 1) {
-      console.log("No previously saved moves on the undo stack.");
+      console.log('No previously saved moves on the undo stack.');
       return;
     }
 

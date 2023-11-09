@@ -1,4 +1,4 @@
-const fallingCards = (canvas, foundations) => {
+export const fallingCards = (canvas, foundations) => {
   const context = canvas.getContext('2d');
 
   // local variables used to hold reference to moving card,

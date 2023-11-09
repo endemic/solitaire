@@ -21,5 +21,5 @@ export default class Pile extends Stack {
     }
 
     return false;
-  };
+  }
 }
