@@ -366,6 +366,8 @@ class Klondike {
       // add to stack which player is "holding"
       this.grabbed.child = card;
 
+      this.grabbed.source = 'waste';
+
       // set offset at which the card is grabbed
       this.grabbed.setOffset(point);
 
@@ -385,6 +387,8 @@ class Klondike {
 
         // add to stack which player is "holding"
         this.grabbed.child = card;
+
+        this.grabbed.source = 'foundation';
 
         // set offset at which the card is grabbed
         this.grabbed.setOffset(point);
@@ -436,6 +440,8 @@ class Klondike {
 
         // add to stack which player is "holding"
         this.grabbed.child = card;
+
+        this.grabbed.source = 'pile';
 
         // set offset at which the card is grabbed
         this.grabbed.setOffset(point);
@@ -504,7 +510,9 @@ class Klondike {
           target.child = card;
           card.parent = target;
 
-          this.status.updateScore(10);
+          if (grabbed.source === 'pile' || grabbed.source === 'talon') {
+            this.status.updateScore(10);
+          }
 
           // successfully placed card; break out of loop,
           // because card can overlap multiple valid piles
@@ -534,11 +542,14 @@ class Klondike {
           target.child = card;
           card.parent = target;
 
-          // TODO: only give points if card was taken from waste
-          this.status.updateScore(5);
+          if (grabbed.source === 'waste') {
+            this.status.updateScore(5);
+          }
 
-          // TODO: if card was taken from foundations, give -15 points
-          // TODO: perhaps add a "source" property to the `grabbed` ivar
+          // you lose points if you have to play a card back down from the foundation
+          if (grabbed.source === 'foundation') {
+            this.status.updateScore(-15);
+          }
 
           // successfully placed card; break out of loop,
           // because card can overlap multiple valid piles
@@ -559,6 +570,7 @@ class Klondike {
 
     // release reference to grabbed card(s)
     grabbed.child = null;
+    grabbed.source = null;
 
     // update tableau
     this.draw();

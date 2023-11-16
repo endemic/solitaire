@@ -7,6 +7,9 @@ export default class Grabbed extends Stack {
   // so clicking/touching the card doesn't cause it to "jump"
   pointOffset = {x: 0, y: 0};
 
+  // string which identifies the pile the card(s) are grabbed from
+  source = null;
+
   constructor() {
     super('grabbed');
   }
