@@ -265,6 +265,8 @@ class Klondike {
         // update tableau
         this.draw();
 
+        this.status.updateScore(10);
+
         // card was played, so no longer need to check
         // subsequent foundations
         break;
@@ -333,6 +335,8 @@ class Klondike {
 
           // TODO: possible to undo this operation?
         }
+
+        this.status.updateScore(-100);
       }
     }
 
@@ -386,7 +390,6 @@ class Klondike {
     });
 
     // check for picking up cards on play piles
-    // piles.forEach(p => {
     for (let i = 0; i < piles.length; i += 1) {
       const p = piles[i];
 
@@ -404,6 +407,9 @@ class Klondike {
 
           // draw the now face-up card
           this.draw();
+
+          // you get some points
+          this.status.updateScore(5);
 
           // don't allow the same click to both turn over _and_ grab card
           return;
@@ -493,6 +499,8 @@ class Klondike {
           target.child = card;
           card.parent = target;
 
+          this.status.updateScore(10);
+
           // successfully placed card; break out of loop,
           // because card can overlap multiple valid piles
           // and shouldn't be placed in more than one pile
@@ -520,6 +528,12 @@ class Klondike {
 
           target.child = card;
           card.parent = target;
+
+          // TODO: only give points if card was taken from waste
+          this.status.updateScore(5);
+
+          // TODO: if card was taken from foundations, give -15 points
+          // TODO: perhaps add a "source" property to the `grabbed` ivar
 
           // successfully placed card; break out of loop,
           // because card can overlap multiple valid piles
@@ -651,6 +665,8 @@ class Klondike {
         p.y = cardHeight + (cardMargin * 2);
       });
     }
+
+    this.status.resize(tableauWidth);
 
     if (!this.interval) {
       // update screen if not displaying card waterfall
