@@ -5,6 +5,7 @@ import Foundation from './foundation.js';
 import Pile from './pile.js';
 import Grabbed from './grabbed.js';
 
+import MenuBar from './menu-bar.js';
 import StatusBar from './status-bar.js';
 
 import { IMG_SRC, SUITS, RANKS } from './constants.js';
@@ -78,6 +79,7 @@ class Klondike {
     this.context = this.canvas.getContext('2d');
 
     this.status = new StatusBar(this.canvas);
+    this.menu = new MenuBar(this.canvas);
 
     // initialize list of cards
     SUITS.forEach(suit => {
@@ -213,8 +215,6 @@ class Klondike {
     // clear previous contents
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    this.status.draw();
-
     // draw card piles
     this.talon.draw(this.context);
     this.waste.draw(this.context);
@@ -223,6 +223,9 @@ class Klondike {
 
     // draw any cards currently being moved by player
     this.grabbed.draw(this.context);
+
+    this.menu.draw();
+    this.status.draw();
   }
 
   checkWin() {
@@ -668,6 +671,7 @@ class Klondike {
       });
     }
 
+    this.menu.resize(tableauWidth);
     this.status.resize(tableauWidth);
 
     if (!this.interval) {
