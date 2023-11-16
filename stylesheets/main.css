@@ -1,3 +1,11 @@
+@font-face {
+  font-family: 'Generic Mobile System';
+  src: url('../fonts/genericmobilesystem-webfont.woff2') format('woff2'),
+       url('../fonts/genericmobilesystem-webfont.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
 html,
 body {
   margin: 0;

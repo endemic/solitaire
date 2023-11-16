@@ -36,7 +36,7 @@ export default class StatusBar {
     this.context.fillRect(0, this.canvas.height - height + this.borderSize, this.canvas.width, height);
 
     // set text style
-    this.context.font = `${fontSize}px Arial, sans-serif`;
+    this.context.font = `${fontSize}px "Generic Mobile System", monospace`;
     this.context.fillStyle = 'black';
 
     //https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Drawing_text
