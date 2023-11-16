@@ -11,11 +11,6 @@ export default class StatusBar {
     // dunno if we need both or not
     this.canvas = canvas;
     this.context = canvas.getContext('2d');
-
-    this.timer = window.setInterval(() => {
-      this.time += 1;
-      this.draw();
-    }, 1000);
   }
 
   draw() {
@@ -48,8 +43,20 @@ export default class StatusBar {
     this.context.fillText(text, windowMargin + this.width - textSize.width - margin, this.canvas.height - textSize.fontBoundingBoxDescent);
   }
 
+  startTimer() {
+    if (this.timer) {
+      return;
+    }
+
+    this.timer = window.setInterval(() => {
+      this.time += 1;
+      this.draw();
+    }, 1000);
+  }
+
   stopTimer() {
     window.clearInterval(this.timer);
+    this.timer = undefined;
   }
 
   updateScore(diff) {

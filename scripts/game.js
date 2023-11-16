@@ -293,6 +293,8 @@ class Klondike {
 
     // console.log(`Double-click? ${doubleClick ? 'Yes!' : 'No :('}; last "on down" timestamp: ${this.lastOnDownTimestamp}`);
 
+    this.status.startTimer();
+
     const point = this.getCoords(e);
     const talon = this.talon;
     const waste = this.waste;
