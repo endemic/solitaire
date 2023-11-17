@@ -22,7 +22,9 @@ const onImageLoad = () => {
   if (loadedImageCount === IMG_SRC.length) {
     // TODO: initialize the canvas before this, so a "loading" progress bar can be
     // displayed (or "Loading..." text)
-    new Klondike();
+
+    // also ensure
+    document.fonts.ready.then(() => new Klondike());
   }
 };
 
@@ -35,6 +37,11 @@ IMG_SRC.forEach(src => {
   IMAGES[key].src = src;
   IMAGES[key].addEventListener('load', onImageLoad);
 });
+
+// load custom font
+const font = new FontFace('Generic Mobile System', 'url(fonts/generic-mobile-system.woff2)');
+document.fonts.add(font);
+font.load();
 
 // ----------------------------------------------
 
