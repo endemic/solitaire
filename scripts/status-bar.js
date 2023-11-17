@@ -4,8 +4,10 @@ export default class StatusBar {
 
   // internal sizing var that get set in `resize`
   width = null;
+  height = null;
 
   borderSize = 1;
+  minFontSize = 16;
 
   constructor(canvas) {
     // dunno if we need both or not
@@ -16,31 +18,26 @@ export default class StatusBar {
   draw() {
     // TODO: dynamically adjust font size; base height of status bar off minimum font size
     // make minimum font size readable on portrait phone
-    let fontSize = this.width * 0.025;
-    const minFontSize = 16;
+
     const windowMargin = (this.canvas.width - this.width) / 2;
     const text = `Score: ${this.score}  Time: ${this.time}`;
     const textSize = this.context.measureText(text);
-
-    fontSize = fontSize < minFontSize ? minFontSize : fontSize;
-
-    const height = fontSize * 1.2; // height of status bar
-    const margin = height * 0.25; // used for some margin on the right side of the score/timer
+    const rightPadding = this.height * 0.25; // used for some padding on the right side of the score/timer
 
     // draw top border
     this.context.fillStyle = 'black';
-    this.context.fillRect(0, this.canvas.height - height, this.canvas.width, this.borderSize);
+    this.context.fillRect(0, this.canvas.height - this.height, this.canvas.width, this.borderSize);
 
     // draw white stats bar background
     this.context.fillStyle = 'white';
-    this.context.fillRect(0, this.canvas.height - height + this.borderSize, this.canvas.width, height);
+    this.context.fillRect(0, this.canvas.height - this.height + this.borderSize, this.canvas.width, this.height);
 
     // set text style
-    this.context.font = `${fontSize}px "Generic Mobile System", monospace`;
+    this.context.font = `${this.fontSize}px "Generic Mobile System", monospace`;
     this.context.fillStyle = 'black';
 
     //https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Drawing_text
-    this.context.fillText(text, windowMargin + this.width - textSize.width - margin, this.canvas.height - textSize.fontBoundingBoxDescent);
+    this.context.fillText(text, windowMargin + this.width - textSize.width - rightPadding, this.canvas.height - textSize.fontBoundingBoxDescent);
   }
 
   startTimer() {
@@ -71,6 +68,15 @@ export default class StatusBar {
 
   resize(tableauWidth) {
     this.width = tableauWidth;
+
+    this.fontSize = this.width * 0.025;
+
+    if (this.fontSize < this.minFontSize) {
+      this.fontSize = this.minFontSize;
+    }
+
+    this.height = this.fontSize * 1.2;
+
 
     this.draw();
   }
