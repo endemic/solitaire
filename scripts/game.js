@@ -286,6 +286,7 @@ class Klondike {
     // See if the most recent move was a winning one
     // TODO: move this elsewhar?
     if (this.checkWin()) {
+      this.status.stopTimer();
       this.interval = fallingCards(this.canvas, this.foundations);
     }
   }
@@ -583,6 +584,7 @@ class Klondike {
     this.draw();
 
     if (this.checkWin()) {
+      this.status.stopTimer();
       this.interval = fallingCards(this.canvas, foundations);
     }
   }
