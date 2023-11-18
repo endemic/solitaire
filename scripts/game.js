@@ -9,7 +9,7 @@ import MenuBar from './menu-bar.js';
 import StatusBar from './status-bar.js';
 
 import { IMG_SRC, SUITS, RANKS } from './constants.js';
-import { fallingCards } from './falling_cards.js';
+import CardWaterfall from './card-waterfall.js';
 
 const IMAGES = {};
 let loadedImageCount = 0;
@@ -57,7 +57,7 @@ class Klondike {
   lastOnDownTimestamp = Date.now();
 
   // stores reference to falling cards animation
-  interval;
+  waterfall = null;
 
   // initialize all places where a card can be placed - https://en.wikipedia.org/wiki/Glossary_of_patience_terms
 
@@ -129,13 +129,30 @@ class Klondike {
     };
   }
 
+  reset() {
+    this.waterfall = null;
+    this.status.reset();
+    this.deal();
+    this.draw();
+  }
+
   deal() {
     const piles = this.piles;
     const talon = this.talon;
 
     const deck = [];
 
-    this.cards.forEach(card => deck.push(card));
+    this.cards.forEach(card => {
+      // ensure any link between cards is broken
+      card.child = null;
+      card.parent = null;
+
+      // TODO: might have to do this with each card pile as well
+
+      deck.push(card);
+    });
+
+    this.debug = true;
 
     // arrange cards for testing endgame
     if (this.debug) {
@@ -181,8 +198,6 @@ class Klondike {
       // And swap it with the current element.
       [deck[currentIndex], deck[randomIndex]] = [deck[randomIndex], deck[currentIndex]];
     }
-
-    // TODO: reset all parent/child relationships
 
     // populate the playing piles
     // This is super janky -- there is probably a better way to do this
@@ -287,7 +302,8 @@ class Klondike {
     // TODO: move this elsewhar?
     if (this.checkWin()) {
       this.status.stopTimer();
-      this.interval = fallingCards(this.canvas, this.foundations);
+
+      this.waterfall = new CardWaterfall(this.canvas, this.foundations, () => { this.reset(); });
     }
   }
 
@@ -585,7 +601,8 @@ class Klondike {
 
     if (this.checkWin()) {
       this.status.stopTimer();
-      this.interval = fallingCards(this.canvas, foundations);
+
+      this.waterfall = new CardWaterfall(this.canvas, this.foundations, () => { this.reset(); });
     }
   }
 
