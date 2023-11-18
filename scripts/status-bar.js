@@ -80,4 +80,13 @@ export default class StatusBar {
 
     this.draw();
   }
+
+  reset() {
+    this.stopTimer();
+
+    this.score = 0;
+    this.time = 0;
+
+    this.draw();
+  }
 }
