@@ -19,10 +19,15 @@ export default class CardWaterfall {
   }
 
   get randomVelocity() {
-    // TODO: generate these values based on width/height of overall canvas
+    const scaledCanvasWidth = parseInt(this.canvas.style.width, 10);
+    const scaledCanvasHeight = parseInt(this.canvas.style.height, 10);
+
+    let x = scaledCanvasWidth * 0.003;
+    let y = scaledCanvasHeight * 0.005;
+
     let v = {
-      x: (Math.random() * 5 + 5) * this.randomSign,
-      y: -Math.random() * 4 + 3
+      x: ((Math.random() * x) + x) * this.randomSign,
+      y: ((Math.random() * y) + y) * -1
     };
 
     console.log(v);
@@ -61,9 +66,11 @@ export default class CardWaterfall {
   }
 
   update() {
-    // start a new card if one hasn't been set
-    // start a new card if the existing one goes off screen
-    if (this.currentlyFallingCard.x + this.currentlyFallingCard.width < 0 || this.currentlyFallingCard.x > this.canvas.width) {
+    const scaledCanvasWidth = parseInt(this.canvas.style.width, 10);
+    const scaledCanvasHeight = parseInt(this.canvas.style.height, 10);
+
+    // pick next card if the existing one goes off screen
+    if (this.currentlyFallingCard.x + this.currentlyFallingCard.width < 0 || this.currentlyFallingCard.x > scaledCanvasWidth) {
       this.currentlyFallingCard = this.nextCard();
     }
 
@@ -84,16 +91,15 @@ export default class CardWaterfall {
 
     // don't let the card go below the bottom edge of the screen
     // TODO: this currently is broken for hidpi screens; canvas is actually 3x
-    if (currentlyFallingCard.y + currentlyFallingCard.height > this.canvas.height) {
-      currentlyFallingCard.y = this.canvas.height - currentlyFallingCard.height;
+    if (currentlyFallingCard.y + currentlyFallingCard.height > scaledCanvasHeight) {
+      currentlyFallingCard.y = scaledCanvasHeight - currentlyFallingCard.height;
 
       // "bounce" the card
-      currentlyFallingCard.velocity.y = -currentlyFallingCard.velocity.y * 0.8;
+      currentlyFallingCard.velocity.y = -currentlyFallingCard.velocity.y * 0.85;
     }
 
     // update card velocity w/ "gravity" acceleration
-    // TODO: base this on overall height of canvas
-    currentlyFallingCard.velocity.y += 0.75;
+    currentlyFallingCard.velocity.y += scaledCanvasHeight * 0.001; // 0.1%
   }
 
   get hasCards() {
