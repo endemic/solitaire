@@ -11,6 +11,8 @@ import StatusBar from './status-bar.js';
 import { IMG_SRC, SUITS, RANKS } from './constants.js';
 import CardWaterfall from './card-waterfall.js';
 
+import Sona from './sona.js';
+
 const IMAGES = {};
 let loadedImageCount = 0;
 
@@ -42,6 +44,16 @@ IMG_SRC.forEach(src => {
 const font = new FontFace('Generic Mobile System', 'url(fonts/generic-mobile-system.woff2)');
 document.fonts.add(font);
 font.load();
+
+// load sounds
+const sfx = new Sona([
+  'sounds/flip_1.mp3',
+  'sounds/flip_2.mp3'
+]);
+sfx.load();
+
+// these resources are so small, I don't really care about halting execution
+// until they are loaded
 
 // ----------------------------------------------
 
@@ -290,6 +302,8 @@ class Klondike {
         // update tableau
         this.draw();
 
+        sfx.play('sounds/flip_1.mp3');
+
         this.status.updateScore(10);
 
         // card was played, so no longer need to check
@@ -367,6 +381,8 @@ class Klondike {
 
         this.status.updateScore(-100);
       }
+
+      sfx.play('sounds/flip_1.mp3');
     }
 
     // if player clicks the waste pile
@@ -443,6 +459,8 @@ class Klondike {
 
           // you get some points
           this.status.updateScore(5);
+
+          sfx.play('sounds/flip_2.mp3');
 
           // don't allow the same click to both turn over _and_ grab card
           return;
@@ -538,6 +556,8 @@ class Klondike {
             this.status.updateScore(10);
           }
 
+          sfx.play('sounds/flip_1.mp3');
+
           // successfully placed card; break out of loop,
           // because card can overlap multiple valid piles
           // and shouldn't be placed in more than one pile
@@ -574,6 +594,8 @@ class Klondike {
           if (grabbed.source === 'foundation') {
             this.status.updateScore(-15);
           }
+
+          sfx.play('sounds/flip_2.mp3');
 
           // successfully placed card; break out of loop,
           // because card can overlap multiple valid piles
