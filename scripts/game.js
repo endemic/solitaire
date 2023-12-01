@@ -107,11 +107,6 @@ class Klondike {
       });
     });
 
-    this.deal();
-
-    // initial draw/resize
-    this.onResize();
-
     // various event listeners
     this.canvas.addEventListener('mousedown', e => this.onDown(e));
     this.canvas.addEventListener('mousemove', e => this.onMove(e));
@@ -123,6 +118,12 @@ class Klondike {
 
     window.addEventListener('resize', e => this.onResize(e));
     window.addEventListener('keydown', e => this.undo(e));
+
+    // put cards in appropriate places
+    this.deal();
+
+    // initial draw/resize
+    this.onResize();
   }
 
   // abstract getting x/y coords for user interactions for both
@@ -151,6 +152,8 @@ class Klondike {
   deal() {
     const piles = this.piles;
     const talon = this.talon;
+    const waste = this.waste;
+    const foundations = this.foundations;
 
     const deck = [];
 
@@ -158,13 +161,44 @@ class Klondike {
       // ensure any link between cards is broken
       card.child = null;
       card.parent = null;
-
-      // TODO: might have to do this with each card pile as well
+      card.faceUp = false;
 
       deck.push(card);
     });
 
-    this.debug = true;
+    // reset all stacks
+    talon.reset();
+    waste.reset();
+    piles.forEach(p => p.reset());
+    foundations.forEach(f => f.reset());
+
+    this.debug = false;
+
+    if (this.debug) {
+      // this code places all cards in foundations and triggers endgame
+      for (let i = 0; i < 52; i += 1) {
+        let index = Math.floor(i / 13);
+        let f = this.foundations[index];
+        let card = this.cards[i];
+        let parent = f.lastCard;
+
+        console.log(`putting ${card} on ${parent} in foundation ${index}`);
+
+        card.faceUp = true;
+        card.x = parent.x;
+        card.y = parent.y;
+
+        parent.child = card;
+        card.parent = parent;
+      }
+
+      this.draw();
+
+      this.status.stopTimer();
+      this.waterfall = new CardWaterfall(this.canvas, this.foundations, () => { this.reset(); });
+
+      return;
+    }
 
     // arrange cards for testing endgame
     if (this.debug) {
@@ -323,6 +357,12 @@ class Klondike {
 
   onDown(e) {
     e.preventDefault();
+
+    if (this.waterfall) {
+      this.waterfall.stop();
+      this.waterfall = null;
+      return;
+    }
 
     const delta = Date.now() - this.lastOnDownTimestamp;
     const doubleClick = delta < 500;

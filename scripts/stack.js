@@ -114,4 +114,8 @@ export default class Stack {
 
     return false;
   }
+
+  reset() {
+    this.child = null;
+  }
 }
