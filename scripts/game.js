@@ -48,12 +48,13 @@ font.load();
 // load sounds
 const sfx = new Sona([
   'sounds/flip_1.mp3',
-  'sounds/flip_2.mp3'
+  'sounds/flip_2.mp3',
+  'sounds/flip_3.mp3',
+  'sounds/flip_4.mp3',
+  'sounds/flip_5.mp3'
 ]);
-sfx.load();
 
-// these resources are so small, I don't really care about halting execution
-// until they are loaded
+await sfx.load();
 
 // ----------------------------------------------
 
@@ -336,7 +337,7 @@ class Klondike {
         // update tableau
         this.draw();
 
-        sfx.play('sounds/flip_1.mp3');
+        this.cardSfx();
 
         this.status.updateScore(10);
 
@@ -422,7 +423,7 @@ class Klondike {
         this.status.updateScore(-100);
       }
 
-      sfx.play('sounds/flip_1.mp3');
+      this.cardSfx();
     }
 
     // if player clicks the waste pile
@@ -500,7 +501,7 @@ class Klondike {
           // you get some points
           this.status.updateScore(5);
 
-          sfx.play('sounds/flip_2.mp3');
+          this.cardSfx();
 
           // don't allow the same click to both turn over _and_ grab card
           return;
@@ -596,7 +597,7 @@ class Klondike {
             this.status.updateScore(10);
           }
 
-          sfx.play('sounds/flip_1.mp3');
+          this.cardSfx();
 
           // successfully placed card; break out of loop,
           // because card can overlap multiple valid piles
@@ -635,7 +636,7 @@ class Klondike {
             this.status.updateScore(-15);
           }
 
-          sfx.play('sounds/flip_2.mp3');
+          this.cardSfx();
 
           // successfully placed card; break out of loop,
           // because card can overlap multiple valid piles
@@ -666,6 +667,12 @@ class Klondike {
 
       this.waterfall = new CardWaterfall(this.canvas, this.foundations, () => { this.reset(); });
     }
+  }
+
+  cardSfx() {
+    const sounds = Object.keys(sfx.buffers);
+    const randomSound = sounds[Math.floor(Math.random() * sounds.length)];
+    sfx.play(randomSound);
   }
 
   onResize() {

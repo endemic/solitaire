@@ -7,7 +7,7 @@ export default class Sona {
     this.context = new AudioContext();
   }
 
-  load(callback) {
+  async load(callback) {
     callback = callback || function() {};
 
     Promise.all(
