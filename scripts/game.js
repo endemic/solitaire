@@ -352,6 +352,13 @@ class Klondike {
     if (this.checkWin()) {
       this.status.stopTimer();
 
+      // calculate time point bonus
+      // https://web.archive.org/web/20121021174637/http://support.microsoft.com/kb/101766/en-us
+      if (this.status.time >= 30) {
+        const bonus = Math.floor(700000 / this.status.time);
+        this.status.score += bonus;
+      }
+
       this.waterfall = new CardWaterfall(this.canvas, this.foundations, () => { this.reset(); });
     }
   }
@@ -665,6 +672,13 @@ class Klondike {
     if (this.checkWin()) {
       this.status.stopTimer();
 
+      // calculate time point bonus
+      // https://web.archive.org/web/20121021174637/http://support.microsoft.com/kb/101766/en-us
+      if (this.status.time >= 30) {
+        const bonus = Math.floor(700000 / this.status.time);
+        this.status.score += bonus;
+      }
+
       this.waterfall = new CardWaterfall(this.canvas, this.foundations, () => { this.reset(); });
     }
   }
@@ -721,8 +735,9 @@ class Klondike {
     let cardMargin = (8 / 605) * tableauWidth;
     let cardOffset = cardMargin * 2.5;
 
+    // cards _should_ be 75x100
     let cardWidth = (77.25 / 605) * tableauWidth;
-    let cardHeight = (100 / 454) * tableauHeight;
+    let cardHeight = (103 / 454) * tableauHeight;
 
     // enumerate over all cards/stacks in order to set their width/height
     for (let group of [grabbed, talon, waste, foundations, piles, cards]) {
@@ -739,47 +754,49 @@ class Klondike {
       }
     }
 
+    this.menu.resize(tableauWidth);
+    this.status.resize(tableauWidth);
+
     // TODO: option to invert orientation of tableau;
     // talon/waste on right side, foundations on left side
     let mirror = true;
 
+    const top = cardMargin + this.menu.height;
+
     // update positions of talon, waste, foundations, and piles
     if (mirror) {
       talon.x = windowWidth - windowMargin - cardMargin - cardWidth;
-      talon.y = cardMargin;
+      talon.y = top;
 
       waste.x = talon.x - cardMargin - cardWidth;
-      waste.y = talon.y;
+      waste.y = top;
 
       foundations.forEach((f, i) => {
         f.x = windowMargin + cardMargin + (cardWidth + cardMargin) * i;
-        f.y = cardMargin;
+        f.y = top;
       });
 
       piles.forEach((p, i) => {
         p.x = talon.x - (cardWidth + cardMargin) * i;
-        p.y = cardHeight + cardMargin * 2;
+        p.y = top + cardHeight + cardMargin;
       });
     } else {
       talon.x = windowMargin + cardMargin;
-      talon.y = cardMargin;
+      talon.y = top;
 
       waste.x = talon.x + cardMargin + cardWidth;
-      waste.y = talon.y;
+      waste.y = top;
 
       foundations.forEach((f, i) => {
         f.x = (windowWidth - windowMargin) - ((cardWidth + cardMargin) * (i + 1));
-        f.y = cardMargin;
+        f.y = top;
       });
 
       piles.forEach((p, i) => {
         p.x = (cardWidth + cardMargin) * i + talon.x;
-        p.y = cardHeight + (cardMargin * 2);
+        p.y = top + cardHeight + cardMargin;
       });
     }
-
-    this.menu.resize(tableauWidth);
-    this.status.resize(tableauWidth);
 
     if (!this.interval) {
       // update screen if not displaying card waterfall
