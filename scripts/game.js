@@ -5,8 +5,13 @@ import Foundation from './foundation.js';
 import Pile from './pile.js';
 import Grabbed from './grabbed.js';
 
+import MenuBar from './menu-bar.js';
+import StatusBar from './status-bar.js';
+
 import { IMG_SRC, SUITS, RANKS } from './constants.js';
-import { fallingCards } from './falling_cards.js';
+import CardWaterfall from './card-waterfall.js';
+
+import Sona from './sona.js';
 
 const IMAGES = {};
 let loadedImageCount = 0;
@@ -19,7 +24,9 @@ const onImageLoad = () => {
   if (loadedImageCount === IMG_SRC.length) {
     // TODO: initialize the canvas before this, so a "loading" progress bar can be
     // displayed (or "Loading..." text)
-    new Klondike();
+
+    // also ensure
+    document.fonts.ready.then(() => new Klondike());
   }
 };
 
@@ -32,6 +39,22 @@ IMG_SRC.forEach(src => {
   IMAGES[key].src = src;
   IMAGES[key].addEventListener('load', onImageLoad);
 });
+
+// load custom font
+const font = new FontFace('Generic Mobile System', 'url(fonts/generic-mobile-system.woff2)');
+document.fonts.add(font);
+font.load();
+
+// load sounds
+const sfx = new Sona([
+  'sounds/flip_1.mp3',
+  'sounds/flip_2.mp3',
+  'sounds/flip_3.mp3',
+  'sounds/flip_4.mp3',
+  'sounds/flip_5.mp3'
+]);
+
+await sfx.load();
 
 // ----------------------------------------------
 
@@ -47,7 +70,7 @@ class Klondike {
   lastOnDownTimestamp = Date.now();
 
   // stores reference to falling cards animation
-  interval;
+  waterfall = null;
 
   // initialize all places where a card can be placed - https://en.wikipedia.org/wiki/Glossary_of_patience_terms
 
@@ -75,17 +98,15 @@ class Klondike {
     this.canvas = document.getElementById('game');
     this.context = this.canvas.getContext('2d');
 
+    this.status = new StatusBar(this.canvas);
+    this.menu = new MenuBar(this.canvas);
+
     // initialize list of cards
     SUITS.forEach(suit => {
       RANKS.forEach(rank => {
         this.cards.push(new Card(rank, suit, IMAGES));
       });
     });
-
-    this.deal();
-
-    // initial draw/resize
-    this.onResize();
 
     // various event listeners
     this.canvas.addEventListener('mousedown', e => this.onDown(e));
@@ -98,6 +119,12 @@ class Klondike {
 
     window.addEventListener('resize', e => this.onResize(e));
     window.addEventListener('keydown', e => this.undo(e));
+
+    // put cards in appropriate places
+    this.deal();
+
+    // initial draw/resize
+    this.onResize();
   }
 
   // abstract getting x/y coords for user interactions for both
@@ -116,13 +143,63 @@ class Klondike {
     };
   }
 
+  reset() {
+    this.waterfall = null;
+    this.status.reset();
+    this.deal();
+    this.draw();
+  }
+
   deal() {
     const piles = this.piles;
     const talon = this.talon;
+    const waste = this.waste;
+    const foundations = this.foundations;
 
     const deck = [];
 
-    this.cards.forEach(card => deck.push(card));
+    this.cards.forEach(card => {
+      // ensure any link between cards is broken
+      card.child = null;
+      card.parent = null;
+      card.faceUp = false;
+
+      deck.push(card);
+    });
+
+    // reset all stacks
+    talon.reset();
+    waste.reset();
+    piles.forEach(p => p.reset());
+    foundations.forEach(f => f.reset());
+
+    this.debug = false;
+
+    if (this.debug) {
+      // this code places all cards in foundations and triggers endgame
+      for (let i = 0; i < 52; i += 1) {
+        let index = Math.floor(i / 13);
+        let f = this.foundations[index];
+        let card = this.cards[i];
+        let parent = f.lastCard;
+
+        console.log(`putting ${card} on ${parent} in foundation ${index}`);
+
+        card.faceUp = true;
+        card.x = parent.x;
+        card.y = parent.y;
+
+        parent.child = card;
+        card.parent = parent;
+      }
+
+      this.draw();
+
+      this.status.stopTimer();
+      this.waterfall = new CardWaterfall(this.canvas, this.foundations, () => { this.reset(); });
+
+      return;
+    }
 
     // arrange cards for testing endgame
     if (this.debug) {
@@ -168,8 +245,6 @@ class Klondike {
       // And swap it with the current element.
       [deck[currentIndex], deck[randomIndex]] = [deck[randomIndex], deck[currentIndex]];
     }
-
-    // TODO: reset all parent/child relationships
 
     // populate the playing piles
     // This is super janky -- there is probably a better way to do this
@@ -217,6 +292,9 @@ class Klondike {
 
     // draw any cards currently being moved by player
     this.grabbed.draw(this.context);
+
+    this.menu.draw();
+    this.status.draw();
   }
 
   checkWin() {
@@ -259,6 +337,10 @@ class Klondike {
         // update tableau
         this.draw();
 
+        this.cardSfx();
+
+        this.status.updateScore(10);
+
         // card was played, so no longer need to check
         // subsequent foundations
         break;
@@ -268,12 +350,27 @@ class Klondike {
     // See if the most recent move was a winning one
     // TODO: move this elsewhar?
     if (this.checkWin()) {
-      this.interval = fallingCards(this.canvas, this.foundations);
+      this.status.stopTimer();
+
+      // calculate time point bonus
+      // https://web.archive.org/web/20121021174637/http://support.microsoft.com/kb/101766/en-us
+      if (this.status.time >= 30) {
+        const bonus = Math.floor(700000 / this.status.time);
+        this.status.score += bonus;
+      }
+
+      this.waterfall = new CardWaterfall(this.canvas, this.foundations, () => { this.reset(); });
     }
   }
 
   onDown(e) {
     e.preventDefault();
+
+    if (this.waterfall) {
+      this.waterfall.stop();
+      this.waterfall = null;
+      return;
+    }
 
     const delta = Date.now() - this.lastOnDownTimestamp;
     const doubleClick = delta < 500;
@@ -284,6 +381,8 @@ class Klondike {
     this.lastOnDownTimestamp = doubleClick ? 0 : Date.now();
 
     // console.log(`Double-click? ${doubleClick ? 'Yes!' : 'No :('}; last "on down" timestamp: ${this.lastOnDownTimestamp}`);
+
+    this.status.startTimer();
 
     const point = this.getCoords(e);
     const talon = this.talon;
@@ -327,7 +426,11 @@ class Klondike {
 
           // TODO: possible to undo this operation?
         }
+
+        this.status.updateScore(-100);
       }
+
+      this.cardSfx();
     }
 
     // if player clicks the waste pile
@@ -351,6 +454,8 @@ class Klondike {
       // add to stack which player is "holding"
       this.grabbed.child = card;
 
+      this.grabbed.source = 'waste';
+
       // set offset at which the card is grabbed
       this.grabbed.setOffset(point);
 
@@ -371,6 +476,8 @@ class Klondike {
         // add to stack which player is "holding"
         this.grabbed.child = card;
 
+        this.grabbed.source = 'foundation';
+
         // set offset at which the card is grabbed
         this.grabbed.setOffset(point);
 
@@ -380,7 +487,6 @@ class Klondike {
     });
 
     // check for picking up cards on play piles
-    // piles.forEach(p => {
     for (let i = 0; i < piles.length; i += 1) {
       const p = piles[i];
 
@@ -398,6 +504,11 @@ class Klondike {
 
           // draw the now face-up card
           this.draw();
+
+          // you get some points
+          this.status.updateScore(5);
+
+          this.cardSfx();
 
           // don't allow the same click to both turn over _and_ grab card
           return;
@@ -419,6 +530,8 @@ class Klondike {
 
         // add to stack which player is "holding"
         this.grabbed.child = card;
+
+        this.grabbed.source = 'pile';
 
         // set offset at which the card is grabbed
         this.grabbed.setOffset(point);
@@ -487,6 +600,12 @@ class Klondike {
           target.child = card;
           card.parent = target;
 
+          if (grabbed.source === 'pile' || grabbed.source === 'talon') {
+            this.status.updateScore(10);
+          }
+
+          this.cardSfx();
+
           // successfully placed card; break out of loop,
           // because card can overlap multiple valid piles
           // and shouldn't be placed in more than one pile
@@ -515,6 +634,17 @@ class Klondike {
           target.child = card;
           card.parent = target;
 
+          if (grabbed.source === 'waste') {
+            this.status.updateScore(5);
+          }
+
+          // you lose points if you have to play a card back down from the foundation
+          if (grabbed.source === 'foundation') {
+            this.status.updateScore(-15);
+          }
+
+          this.cardSfx();
+
           // successfully placed card; break out of loop,
           // because card can overlap multiple valid piles
           // and shouldn't be placed in more than one pile
@@ -534,13 +664,29 @@ class Klondike {
 
     // release reference to grabbed card(s)
     grabbed.child = null;
+    grabbed.source = null;
 
     // update tableau
     this.draw();
 
     if (this.checkWin()) {
-      this.interval = fallingCards(this.canvas, foundations);
+      this.status.stopTimer();
+
+      // calculate time point bonus
+      // https://web.archive.org/web/20121021174637/http://support.microsoft.com/kb/101766/en-us
+      if (this.status.time >= 30) {
+        const bonus = Math.floor(700000 / this.status.time);
+        this.status.score += bonus;
+      }
+
+      this.waterfall = new CardWaterfall(this.canvas, this.foundations, () => { this.reset(); });
     }
+  }
+
+  cardSfx() {
+    const sounds = Object.keys(sfx.buffers);
+    const randomSound = sounds[Math.floor(Math.random() * sounds.length)];
+    sfx.play(randomSound);
   }
 
   onResize() {
@@ -589,8 +735,9 @@ class Klondike {
     let cardMargin = (8 / 605) * tableauWidth;
     let cardOffset = cardMargin * 2.5;
 
+    // cards _should_ be 75x100
     let cardWidth = (77.25 / 605) * tableauWidth;
-    let cardHeight = (100 / 454) * tableauHeight;
+    let cardHeight = (103 / 454) * tableauHeight;
 
     // enumerate over all cards/stacks in order to set their width/height
     for (let group of [grabbed, talon, waste, foundations, piles, cards]) {
@@ -607,42 +754,47 @@ class Klondike {
       }
     }
 
+    this.menu.resize(tableauWidth);
+    this.status.resize(tableauWidth);
+
     // TODO: option to invert orientation of tableau;
     // talon/waste on right side, foundations on left side
     let mirror = true;
 
+    const top = cardMargin + this.menu.height;
+
     // update positions of talon, waste, foundations, and piles
     if (mirror) {
       talon.x = windowWidth - windowMargin - cardMargin - cardWidth;
-      talon.y = cardMargin;
+      talon.y = top;
 
       waste.x = talon.x - cardMargin - cardWidth;
-      waste.y = talon.y;
+      waste.y = top;
 
       foundations.forEach((f, i) => {
         f.x = windowMargin + cardMargin + (cardWidth + cardMargin) * i;
-        f.y = cardMargin;
+        f.y = top;
       });
 
       piles.forEach((p, i) => {
         p.x = talon.x - (cardWidth + cardMargin) * i;
-        p.y = cardHeight + cardMargin * 2;
+        p.y = top + cardHeight + cardMargin;
       });
     } else {
       talon.x = windowMargin + cardMargin;
-      talon.y = cardMargin;
+      talon.y = top;
 
       waste.x = talon.x + cardMargin + cardWidth;
-      waste.y = talon.y;
+      waste.y = top;
 
       foundations.forEach((f, i) => {
         f.x = (windowWidth - windowMargin) - ((cardWidth + cardMargin) * (i + 1));
-        f.y = cardMargin;
+        f.y = top;
       });
 
       piles.forEach((p, i) => {
         p.x = (cardWidth + cardMargin) * i + talon.x;
-        p.y = cardHeight + (cardMargin * 2);
+        p.y = top + cardHeight + cardMargin;
       });
     }
 

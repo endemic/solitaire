@@ -53,7 +53,7 @@ export default class Stack {
       context.drawImage(card.image, card.x, card.y, card.width, card.height);
 
       // if cards in play piles are still face down, draw them closer together
-      let offset = card.faceUp ? this.cardOffset : this.cardOffset / 4;
+      let offset = card.faceUp ? this.cardOffset : this.cardOffset / 3;
 
       // set up for next card (if necessary)
       y += offset;
@@ -113,5 +113,9 @@ export default class Stack {
     } while (card);
 
     return false;
+  }
+
+  reset() {
+    this.child = null;
   }
 }
